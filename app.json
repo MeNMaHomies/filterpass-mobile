@@ -37,6 +37,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bf8c669f-dfb3-4224-9180-4d51f91efc3a"
+      }
+    },
+    "owner": "jlords32s-team"
   }
 }
