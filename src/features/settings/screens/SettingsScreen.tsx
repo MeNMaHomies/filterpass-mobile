@@ -1,13 +1,45 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Button, Card, Eyebrow } from '@/components';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
+import {
+	API_SESSION_DEFAULTS,
+	loadSessionDefaults,
+	resetSessionDefaults,
+	saveSessionDefaults,
+	type SessionDefaults,
+} from '../sessionDefaults';
 
 export function SettingsScreen() {
-	const [threshold, setThreshold] = useState(0.5);
-	const [ema, setEma] = useState(0.3);
+	const [defaults, setDefaults] = useState<SessionDefaults>(
+		API_SESSION_DEFAULTS,
+	);
+	const [loaded, setLoaded] = useState(false);
+	const [saved, setSaved] = useState(false);
+
+	useEffect(() => {
+		loadSessionDefaults().then((d) => {
+			setDefaults(d);
+			setLoaded(true);
+		});
+	}, []);
+
+	const handleSave = useCallback(async () => {
+		await saveSessionDefaults(defaults);
+		setSaved(true);
+		setTimeout(() => setSaved(false), 2000);
+	}, [defaults]);
+
+	const handleReset = useCallback(async () => {
+		const d = await resetSessionDefaults();
+		setDefaults(d);
+	}, []);
+
+	if (!loaded) {
+		return null;
+	}
 
 	return (
 		<ScrollView
@@ -25,8 +57,8 @@ export function SettingsScreen() {
 			<Eyebrow>Audio</Eyebrow>
 			<Card style={styles.group}>
 				{[
-					['Sample rate', '16000 Hz'],
-					['Chunk duration', '0.5 s'],
+					['Sample rate', `${defaults.sample_rate} Hz`],
+					['Chunk duration', `${defaults.chunk_duration_s} s`],
 					['Max frame', '32 KB'],
 				].map(([k, v], i, arr) => (
 					<View
@@ -44,14 +76,18 @@ export function SettingsScreen() {
 				<View style={styles.sliderBlock}>
 					<View style={styles.sliderHeader}>
 						<Text style={styles.rowLabel}>Spoof threshold</Text>
-						<Text style={styles.sliderValue}>{threshold.toFixed(2)}</Text>
+						<Text style={styles.sliderValue}>
+							{defaults.spoof_threshold.toFixed(2)}
+						</Text>
 					</View>
 					<Slider
 						minimumValue={0.1}
 						maximumValue={0.9}
 						step={0.05}
-						value={threshold}
-						onValueChange={setThreshold}
+						value={defaults.spoof_threshold}
+						onValueChange={(v) =>
+							setDefaults((d) => ({ ...d, spoof_threshold: v }))
+						}
 						minimumTrackTintColor={colors.primary}
 						maximumTrackTintColor={colors.border}
 						thumbTintColor={colors.primary}
@@ -60,14 +96,18 @@ export function SettingsScreen() {
 				<View style={styles.sliderBlock}>
 					<View style={styles.sliderHeader}>
 						<Text style={styles.rowLabel}>EMA α</Text>
-						<Text style={styles.sliderValue}>{ema.toFixed(2)}</Text>
+						<Text style={styles.sliderValue}>
+							{defaults.ema_alpha.toFixed(2)}
+						</Text>
 					</View>
 					<Slider
 						minimumValue={0.1}
 						maximumValue={0.9}
 						step={0.05}
-						value={ema}
-						onValueChange={setEma}
+						value={defaults.ema_alpha}
+						onValueChange={(v) =>
+							setDefaults((d) => ({ ...d, ema_alpha: v }))
+						}
 						minimumTrackTintColor={colors.primary}
 						maximumTrackTintColor={colors.border}
 						thumbTintColor={colors.primary}
@@ -80,18 +120,13 @@ export function SettingsScreen() {
 					variant="ghost"
 					label="Reset"
 					style={styles.actionBtn}
-					onPress={() => {
-						setThreshold(0.5);
-						setEma(0.3);
-					}}
+					onPress={handleReset}
 				/>
 				<Button
 					variant="solid"
-					label="Save"
+					label={saved ? 'Saved' : 'Save'}
 					style={styles.actionBtn}
-					onPress={() =>
-						console.log('Settings saved (mock)', { threshold, ema })
-					}
+					onPress={handleSave}
 				/>
 			</View>
 		</ScrollView>
