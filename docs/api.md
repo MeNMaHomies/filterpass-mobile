@@ -20,9 +20,7 @@ most one attached client.
 Liveness + model-load check.
 
 ```json
-{ "status": "ok",
-  "device": "cuda",
-  "model_loaded": true }
+{ "status": "ok", "device": "cuda", "model_loaded": true }
 ```
 
 ### `POST /sessions`
@@ -30,41 +28,45 @@ Liveness + model-load check.
 Create a session. All body fields optional; omitted values fall back to
 `app.core.config` defaults.
 
-| Field | Default | Notes |
-|-------|---------|-------|
-| `sample_rate` | `TARGET_SR` (16000) | Hz. Sizes `chunk_samples = round(sample_rate * chunk_duration_s)`. |
-| `chunk_duration_s` | `CHUNK_DURATION_S` (0.5) | Seconds per inference chunk. |
-| `chunk_overlap_s` | `CHUNK_OVERLAP_S` (0.0) | Seconds of overlap between consecutive chunks. Must be `< chunk_duration_s`. `0` = sequential. Effective hop = `chunk_duration_s - chunk_overlap_s`. |
-| `ema_alpha` | `EMA_ALPHA` (0.3) | Session-score EMA smoothing. Higher = more reactive. |
-| `spoof_threshold` | `SPOOF_THRESHOLD` (0.5) | `session_score >= threshold` -> `"spoof"`. |
-| `vad_mode` | `VAD_MODE` (2) | WebRTC VAD aggressiveness, 0-3. |
-| `vad_frame_ms` | `VAD_FRAME_MS` (30) | VAD frame size in ms, one of {10, 20, 30}. |
-| `idle_timeout_s` | `SESSION_IDLE_TIMEOUT_S` (60.0) | Evict if no inbound frame for this long. |
+| Field              | Default                         | Notes                                                                                                                                                |
+| ------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sample_rate`      | `TARGET_SR` (16000)             | Hz. Sizes `chunk_samples = round(sample_rate * chunk_duration_s)`.                                                                                   |
+| `chunk_duration_s` | `CHUNK_DURATION_S` (0.5)        | Seconds per inference chunk.                                                                                                                         |
+| `chunk_overlap_s`  | `CHUNK_OVERLAP_S` (0.0)         | Seconds of overlap between consecutive chunks. Must be `< chunk_duration_s`. `0` = sequential. Effective hop = `chunk_duration_s - chunk_overlap_s`. |
+| `ema_alpha`        | `EMA_ALPHA` (0.3)               | Session-score EMA smoothing. Higher = more reactive.                                                                                                 |
+| `spoof_threshold`  | `SPOOF_THRESHOLD` (0.5)         | `session_score >= threshold` -> `"spoof"`.                                                                                                           |
+| `vad_mode`         | `VAD_MODE` (2)                  | WebRTC VAD aggressiveness, 0-3.                                                                                                                      |
+| `vad_frame_ms`     | `VAD_FRAME_MS` (30)             | VAD frame size in ms, one of {10, 20, 30}.                                                                                                           |
+| `idle_timeout_s`   | `SESSION_IDLE_TIMEOUT_S` (60.0) | Evict if no inbound frame for this long.                                                                                                             |
 
 Server-only knobs (fixed by `app/core/config.py`, not overridable per session):
 `max_frame_bytes` (`MAX_FRAME_BYTES`, 262144) - per inbound binary frame cap;
 `output_queue_max` (`OUTPUT_QUEUE_MAX`, 256) - backpressure cap for `/ws/output` queue.
 
 Request:
+
 ```json
 { "sample_rate": 16000, "chunk_duration_s": 0.5, "spoof_threshold": 0.6 }
 ```
 
 Response (201):
+
 ```json
-{ "session_id": "a3f1...",
-  "config": {
-    "sample_rate": 16000,
-    "chunk_samples": 8000,
-    "chunk_duration_s": 0.5,
-    "chunk_overlap_s": 0.0,
-    "chunk_overlap_samples": 0,
-    "ema_alpha": 0.3,
-    "spoof_threshold": 0.6,
-    "vad_mode": 2,
-    "vad_frame_ms": 30,
-    "idle_timeout_s": 60.0
-  } }
+{
+	"session_id": "a3f1...",
+	"config": {
+		"sample_rate": 16000,
+		"chunk_samples": 8000,
+		"chunk_duration_s": 0.5,
+		"chunk_overlap_s": 0.0,
+		"chunk_overlap_samples": 0,
+		"ema_alpha": 0.3,
+		"spoof_threshold": 0.6,
+		"vad_mode": 2,
+		"vad_frame_ms": 30,
+		"idle_timeout_s": 60.0
+	}
+}
 ```
 
 429 `session_limit_reached` if `MAX_SESSIONS` (64) reached.
@@ -72,26 +74,28 @@ Response (201):
 ### `GET /sessions/{session_id}`
 
 ```json
-{ "session_id": "a3f1...",
-  "status": "active",
-  "created_at": 1715479200.12,
-  "last_frame_at": 1715479205.44,
-  "frames_seen": 142,
-  "chunks_inferred": 10,
-  "last_chunk_prob": 0.7421,
-  "last_session_score": 0.6803,
-  "config": {
-    "sample_rate": 16000,
-    "chunk_samples": 8000,
-    "chunk_duration_s": 0.5,
-    "chunk_overlap_s": 0.0,
-    "chunk_overlap_samples": 0,
-    "ema_alpha": 0.3,
-    "spoof_threshold": 0.6,
-    "vad_mode": 2,
-    "vad_frame_ms": 30,
-    "idle_timeout_s": 60.0
-  } }
+{
+	"session_id": "a3f1...",
+	"status": "active",
+	"created_at": 1715479200.12,
+	"last_frame_at": 1715479205.44,
+	"frames_seen": 142,
+	"chunks_inferred": 10,
+	"last_chunk_prob": 0.7421,
+	"last_session_score": 0.6803,
+	"config": {
+		"sample_rate": 16000,
+		"chunk_samples": 8000,
+		"chunk_duration_s": 0.5,
+		"chunk_overlap_s": 0.0,
+		"chunk_overlap_samples": 0,
+		"ema_alpha": 0.3,
+		"spoof_threshold": 0.6,
+		"vad_mode": 2,
+		"vad_frame_ms": 30,
+		"idle_timeout_s": 60.0
+	}
+}
 ```
 
 404 `session_not_found` if unknown id.
@@ -108,11 +112,11 @@ client per channel per session.
 
 Common close codes:
 
-| Code | Meaning |
-|------|---------|
-| 4404 | unknown session |
+| Code | Meaning          |
+| ---- | ---------------- |
+| 4404 | unknown session  |
 | 4409 | already attached |
-| 1011 | server error |
+| 1011 | server error     |
 
 ### `WS /ws/frames/{session_id}` (inbound)
 
@@ -140,23 +144,25 @@ If `len(frame) > MAX_FRAME_BYTES` (server config):
 **Text control messages:** JSON.
 
 Reset aggregator + buffer:
+
 ```json
 { "type": "reset" }
 ```
 
 Update sample rate (recomputes `chunk_samples` + `chunk_overlap_samples`, resets buffer + aggregator):
+
 ```json
 { "type": "set_sample_rate", "sample_rate": 22050 }
 ```
 
 Soft errors (socket stays open):
 
-| `code` | When |
-|--------|------|
-| `frame_too_large` | binary frame exceeds server-configured `MAX_FRAME_BYTES` |
-| `decode_failed` | VAD/decode raised on a chunk |
+| `code`                | When                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| `frame_too_large`     | binary frame exceeds server-configured `MAX_FRAME_BYTES`    |
+| `decode_failed`       | VAD/decode raised on a chunk                                |
 | `invalid_sample_rate` | `set_sample_rate` value missing or out of range (0, 192000] |
-| `invalid_control` | bad JSON, non-object, or unknown `type` |
+| `invalid_control`     | bad JSON, non-object, or unknown `type`                     |
 
 ### `WS /ws/output/{session_id}` (outbound, server-only)
 
@@ -164,14 +170,17 @@ Server pushes JSON messages tagged by `type`. The client should not
 send on this channel.
 
 **`score`** - per completed inference chunk:
+
 ```json
-{ "type": "score",
-  "session_id": "a3f1...",
-  "chunk_idx": 10,
-  "chunk_prob": 0.7421,
-  "session_score": 0.6803,
-  "latency_ms": 82.13,
-  "rtf": 0.082134 }
+{
+	"type": "score",
+	"session_id": "a3f1...",
+	"chunk_idx": 10,
+	"chunk_prob": 0.7421,
+	"session_score": 0.6803,
+	"latency_ms": 82.13,
+	"rtf": 0.082134
+}
 ```
 
 `latency_ms` is the wall-clock model inference time for that chunk.
@@ -181,19 +190,25 @@ spoof/real label is **not** sent by the backend - clients derive it from
 session config from `POST /sessions` / `GET /sessions/{id}`.
 
 **`warmup`** - voiced buffer not yet full, no inference run:
+
 ```json
-{ "type": "warmup",
-  "session_id": "a3f1...",
-  "buffer_fill_samples": 3200,
-  "buffer_target_samples": 8000 }
+{
+	"type": "warmup",
+	"session_id": "a3f1...",
+	"buffer_fill_samples": 3200,
+	"buffer_target_samples": 8000
+}
 ```
 
 **`error`** - inference path failures:
+
 ```json
-{ "type": "error",
-  "session_id": "a3f1...",
-  "code": "decode_failed",
-  "message": "" }
+{
+	"type": "error",
+	"session_id": "a3f1...",
+	"code": "decode_failed",
+	"message": ""
+}
 ```
 
 `code` is one of `decode_failed`, `infer_failed`.
@@ -203,10 +218,10 @@ session config from `POST /sessions` / `GET /sessions/{id}`.
 Backend does not emit a label. Clients derive it locally from each
 `score` event:
 
-| Condition | label |
-|-----------|-------|
+| Condition                          | label     |
+| ---------------------------------- | --------- |
 | `session_score >= spoof_threshold` | `"spoof"` |
-| else | `"real"` |
+| else                               | `"real"`  |
 
 `spoof_threshold` is per-session, set on `POST /sessions`. Default
 `SPOOF_THRESHOLD = 0.5`. Returned in the session config so clients can
@@ -250,29 +265,31 @@ awaits the disk.
 
 List durable sessions, newest first.
 
-| Query | Default | Notes |
-|-------|---------|-------|
-| `limit` | 50 | 1..100 |
-| `offset` | 0 | pagination |
+| Query         | Default | Notes                                                    |
+| ------------- | ------- | -------------------------------------------------------- |
+| `limit`       | 50      | 1..100                                                   |
+| `offset`      | 0       | pagination                                               |
 | `only_closed` | (unset) | `true` = closed only, `false` = live only, omit for both |
 
 ```json
 [
-  { "session_id": "a3f1...",
-    "created_at": 1715479200.12,
-    "closed_at": 1715479830.45,
-    "sample_rate": 16000,
-    "chunk_duration_s": 0.5,
-    "ema_alpha": 0.3,
-    "spoof_threshold": 0.5,
-    "device": "cuda",
-    "frames_seen": 1432,
-    "chunks_inferred": 47,
-    "last_rtf": 0.0821,
-    "avg_session_score": 0.6412,
-    "avg_latency_ms": 41.07,
-    "voiced_frames": 1102,
-    "voice_activity": 0.7695 }
+	{
+		"session_id": "a3f1...",
+		"created_at": 1715479200.12,
+		"closed_at": 1715479830.45,
+		"sample_rate": 16000,
+		"chunk_duration_s": 0.5,
+		"ema_alpha": 0.3,
+		"spoof_threshold": 0.5,
+		"device": "cuda",
+		"frames_seen": 1432,
+		"chunks_inferred": 47,
+		"last_rtf": 0.0821,
+		"avg_session_score": 0.6412,
+		"avg_latency_ms": 41.07,
+		"voiced_frames": 1102,
+		"voice_activity": 0.7695
+	}
 ]
 ```
 
@@ -305,24 +322,28 @@ entry above (includes `last_rtf`).
 
 Per-chunk timeseries for dashboard charts.
 
-| Query | Default | Notes |
-|-------|---------|-------|
-| `since_chunk` | 0 | filter `chunk_idx >= since_chunk` |
-| `limit` | 1000 | 1..10000 |
-| `from_ts` | (unset) | unix epoch seconds (lower bound, inclusive) |
-| `to_ts` | (unset) | unix epoch seconds (upper bound, inclusive) |
+| Query         | Default | Notes                                       |
+| ------------- | ------- | ------------------------------------------- |
+| `since_chunk` | 0       | filter `chunk_idx >= since_chunk`           |
+| `limit`       | 1000    | 1..10000                                    |
+| `from_ts`     | (unset) | unix epoch seconds (lower bound, inclusive) |
+| `to_ts`       | (unset) | unix epoch seconds (upper bound, inclusive) |
 
 ```json
-{ "session_id": "a3f1...",
-  "count": 47,
-  "entries": [
-    { "session_id": "a3f1...",
-      "chunk_idx": 1,
-      "ts": 1715479201.04,
-      "chunk_prob": 0.7421,
-      "session_score": 0.5734,
-      "rtf": 0.0821 }
-  ] }
+{
+	"session_id": "a3f1...",
+	"count": 47,
+	"entries": [
+		{
+			"session_id": "a3f1...",
+			"chunk_idx": 1,
+			"ts": 1715479201.04,
+			"chunk_prob": 0.7421,
+			"session_score": 0.5734,
+			"rtf": 0.0821
+		}
+	]
+}
 ```
 
 ### `GET /history/sessions/{session_id}/events`
@@ -330,20 +351,26 @@ Per-chunk timeseries for dashboard charts.
 Lifecycle / control / error markers, oldest first.
 
 ```json
-{ "session_id": "a3f1...",
-  "count": 2,
-  "entries": [
-    { "id": 1,
-      "session_id": "a3f1...",
-      "ts": 1715479200.12,
-      "event_type": "created",
-      "details": { "sample_rate": 16000 } },
-    { "id": 2,
-      "session_id": "a3f1...",
-      "ts": 1715479260.0,
-      "event_type": "set_sample_rate",
-      "details": { "sample_rate": 22050 } }
-  ] }
+{
+	"session_id": "a3f1...",
+	"count": 2,
+	"entries": [
+		{
+			"id": 1,
+			"session_id": "a3f1...",
+			"ts": 1715479200.12,
+			"event_type": "created",
+			"details": { "sample_rate": 16000 }
+		},
+		{
+			"id": 2,
+			"session_id": "a3f1...",
+			"ts": 1715479260.0,
+			"event_type": "set_sample_rate",
+			"details": { "sample_rate": 22050 }
+		}
+	]
+}
 ```
 
 `event_type` is one of: `created`, `closed`, `reset`, `set_sample_rate`,
@@ -362,13 +389,14 @@ Intended source for dashboard charts (Overview "Inference volume" bar).
 Prefer this over fanning out per-session via
 `/history/sessions/{id}/inferences`.
 
-| Query | Default | Notes |
-|-------|---------|-------|
-| `from_ts` | `now - 1800` | inclusive lower bound on `inferences.ts` |
-| `to_ts` | `now` | exclusive upper bound |
-| `bucket_s` | `60` | bucket width in seconds, must be `> 0` |
+| Query      | Default      | Notes                                    |
+| ---------- | ------------ | ---------------------------------------- |
+| `from_ts`  | `now - 1800` | inclusive lower bound on `inferences.ts` |
+| `to_ts`    | `now`        | exclusive upper bound                    |
+| `bucket_s` | `60`         | bucket width in seconds, must be `> 0`   |
 
 Validation (422 on failure):
+
 - `from_ts < to_ts` and both finite
 - `bucket_s > 0`
 - `ceil((to_ts - from_ts) / bucket_s) <= 2000` (cap protects against
@@ -377,13 +405,15 @@ Validation (422 on failure):
 Response shape:
 
 ```json
-{ "from_ts": 1715479200.0,
-  "to_ts": 1715481000.0,
-  "bucket_s": 60.0,
-  "buckets": [
-    { "t_start": 1715479200.0, "chunks_total": 142, "chunks_spoof": 21 },
-    { "t_start": 1715479260.0, "chunks_total": 138, "chunks_spoof": 18 }
-  ] }
+{
+	"from_ts": 1715479200.0,
+	"to_ts": 1715481000.0,
+	"bucket_s": 60.0,
+	"buckets": [
+		{ "t_start": 1715479200.0, "chunks_total": 142, "chunks_spoof": 21 },
+		{ "t_start": 1715479260.0, "chunks_total": 138, "chunks_spoof": 18 }
+	]
+}
 ```
 
 - One entry per **non-empty** bucket. Empty buckets are omitted; the
@@ -400,22 +430,27 @@ Response shape:
 Global, newest-first lifecycle event feed across all sessions. Drives
 the Overview "Recent activity" card.
 
-| Query | Default | Notes |
-|-------|---------|-------|
-| `limit` | 50 | 1..500 |
-| `before_ts` | (unset) | cursor - return events with `ts < before_ts` |
+| Query        | Default | Notes                                                                                                                              |
+| ------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `limit`      | 50      | 1..500                                                                                                                             |
+| `before_ts`  | (unset) | cursor - return events with `ts < before_ts`                                                                                       |
 | `event_type` | (unset) | repeatable filter; one or more of `created`, `closed`, `reset`, `set_sample_rate`, `idle_evicted`, `decode_failed`, `infer_failed` |
 
 Response (same `HistoryEvent` shape used by the per-session feed):
 
 ```json
-{ "count": 50,
-  "entries": [
-    { "id": 12048,
-      "session_id": "a3f1...",
-      "ts": 1715480991.04,
-      "event_type": "closed",
-      "details": null } ] }
+{
+	"count": 50,
+	"entries": [
+		{
+			"id": 12048,
+			"session_id": "a3f1...",
+			"ts": 1715480991.04,
+			"event_type": "closed",
+			"details": null
+		}
+	]
+}
 ```
 
 Order: `ts DESC, id DESC` (id breaks ties when ts collides).
@@ -433,14 +468,14 @@ Set to `0` to keep forever. Sweep also runs once at startup.
 
 ### Config knobs (`app/core/config.py`)
 
-| Constant | Default | Notes |
-|----------|---------|-------|
-| `HISTORY_ENABLED` | `True` | Master switch. When false, the writer + REST routes are inert. |
-| `HISTORY_DB_PATH` | `"data/filterpass_history.db"` | SQLite file path; parent dir auto-created. |
-| `HISTORY_FLUSH_INTERVAL_S` | `1.0` | Writer flush cadence. |
-| `HISTORY_FLUSH_BATCH` | `200` | Force flush when queue hits this depth. |
-| `HISTORY_RETENTION_DAYS` | `30` | `0` = keep forever. |
-| `HISTORY_QUEUE_MAX` | `10000` | Writer backpressure cap; drops with warning log when full. |
+| Constant                   | Default                        | Notes                                                          |
+| -------------------------- | ------------------------------ | -------------------------------------------------------------- |
+| `HISTORY_ENABLED`          | `True`                         | Master switch. When false, the writer + REST routes are inert. |
+| `HISTORY_DB_PATH`          | `"data/filterpass_history.db"` | SQLite file path; parent dir auto-created.                     |
+| `HISTORY_FLUSH_INTERVAL_S` | `1.0`                          | Writer flush cadence.                                          |
+| `HISTORY_FLUSH_BATCH`      | `200`                          | Force flush when queue hits this depth.                        |
+| `HISTORY_RETENTION_DAYS`   | `30`                           | `0` = keep forever.                                            |
+| `HISTORY_QUEUE_MAX`        | `10000`                        | Writer backpressure cap; drops with warning log when full.     |
 
 ### Schema (SQLite)
 
