@@ -19,7 +19,6 @@ export function AppShell({ title, subtitle, headerRight, children }: AppShellPro
 
   return (
     <View style={styles.root}>
-      <View style={styles.ambientTop} pointerEvents="none" />
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
@@ -43,7 +42,18 @@ export function AppShell({ title, subtitle, headerRight, children }: AppShellPro
           </View>
           {headerRight}
         </View>
-        <View style={styles.divider} />
+        <LinearGradient
+          colors={[
+            'transparent',
+            'rgba(59,130,246,0.5)',
+            'rgba(245,158,11,0.45)',
+            'transparent',
+          ]}
+          locations={[0, 0.3, 0.7, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.divider}
+        />
       </View>
       <View style={styles.content}>{children}</View>
     </View>
@@ -54,17 +64,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  ambientTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    backgroundColor: colors.primary,
-    opacity: 0.06,
-    borderBottomLeftRadius: 120,
-    borderBottomRightRadius: 80,
   },
   header: {
     paddingHorizontal: spacing.screenX,
@@ -98,8 +97,6 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginTop: 12,
-    backgroundColor: colors.border,
-    opacity: 0.6,
   },
   content: {
     flex: 1,
