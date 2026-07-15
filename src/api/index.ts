@@ -11,3 +11,10 @@ export {
 } from './history';
 export type { ListHistorySessionsParams } from './history';
 export type { GetSessionInferencesParams, GetInferenceBucketsParams } from './history';
+export {
+	socketUrl,
+	WsCloseError,
+	connectFramesSocket,
+	connectOutputSocket,
+} from './ws';
+export type { FramesSocket, OutputSocket } from './ws';
