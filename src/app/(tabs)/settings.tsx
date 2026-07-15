@@ -1,5 +1,5 @@
-import { AppShell } from '@/components/filterpass';
-import { SettingsScreen } from '@/features/settings/SettingsScreen';
+import { AppShell } from '@/components';
+import { SettingsScreen } from '@/features/settings';
 
 export default function SettingsRoute() {
 	return (

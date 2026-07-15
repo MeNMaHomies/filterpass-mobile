@@ -8,13 +8,17 @@ import Svg, {
 	LinearGradient,
 	Stop,
 } from 'react-native-svg';
-import { Card, Eyebrow, StatusBadge } from '@/components/filterpass';
+import { Card, Eyebrow, StatusBadge } from '@/components';
 import { reportChunks } from '@/mocks/sessions';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
-export function ReportScreen() {
+type ReportScreenProps = {
+	sessionId?: string;
+};
+
+export function ReportScreen({ sessionId }: ReportScreenProps) {
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}

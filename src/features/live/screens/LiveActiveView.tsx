@@ -8,7 +8,7 @@ import {
 	LiveDot,
 	ScoreGauge,
 	StatusBadge,
-} from '@/components/filterpass';
+} from '@/components';
 import { liveChunkHistory } from '@/mocks/sessions';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';

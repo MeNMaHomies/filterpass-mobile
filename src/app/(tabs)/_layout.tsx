@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { FloatingTabBar } from '@/components/filterpass';
+import { FloatingTabBar } from '@/components';
 import { colors } from '@/theme/tokens';
 
 export default function TabLayout() {

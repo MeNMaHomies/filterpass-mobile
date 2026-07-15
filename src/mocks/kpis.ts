@@ -1,8 +1,4 @@
-export type KpiItem = {
-	label: string;
-	value: string;
-	live: boolean;
-};
+import type { KpiItem } from '@/types';
 
 export const homeKpis: KpiItem[] = [
 	{ label: 'Backend', value: 'OK', live: true },

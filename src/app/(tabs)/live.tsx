@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { AppShell, StatusBadge } from '@/components/filterpass';
-import { LiveActiveView } from '@/features/live/LiveActiveView';
-import { LiveIdleView } from '@/features/live/LiveIdleView';
-import { LiveWarmupView } from '@/features/live/LiveWarmupView';
+import { AppShell, StatusBadge } from '@/components';
+import {
+	LiveActiveView,
+	LiveIdleView,
+	LiveWarmupView,
+} from '@/features/live';
 import { colors } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

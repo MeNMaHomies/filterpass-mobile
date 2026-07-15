@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Card, Eyebrow, MicButton, StatusBadge } from '@/components/filterpass';
+import { Card, Eyebrow, StatusBadge } from '@/components';
+import { MicButton } from '../components/MicButton';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

@@ -5,7 +5,7 @@
 ## Expo & React Native
 
 - Target **Expo SDK 57** (`expo ~57.0.6`). Read versioned docs before writing code: https://docs.expo.dev/versions/v57.0.0/
-- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/filterpass/`. Feature screens in `src/features/`.
+- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/` (`ui/`, `layout/`, `charts/`). Feature code in `src/features/<name>/` (`screens/`, `components/`). Domain types in `src/types/`, mock data in `src/mocks/`.
 - Theme tokens: `src/theme/tokens.ts`, typography: `src/theme/typography.ts`.
 - Prefer existing components (`AppShell`, `Card`, `Button`, etc.) over one-off markup.
 - Avoid native modules that crash in **Expo Go** unless verified (e.g. `@shopify/react-native-skia` with layer blur caused SIGSEGV — use `expo-linear-gradient` or a dev build instead).

@@ -1,5 +1,10 @@
-import { HomeScreen } from '@/features/home/HomeScreen';
+import { AppShell } from '@/components';
+import { HomeScreen } from '@/features/home';
 
 export default function HomeRoute() {
-	return <HomeScreen />;
+	return (
+		<AppShell title="Overview">
+			<HomeScreen />
+		</AppShell>
+	);
 }

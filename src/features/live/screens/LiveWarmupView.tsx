@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Square } from 'lucide-react-native';
-import { Card, Eyebrow, StatusBadge } from '@/components/filterpass';
+import { Card, Eyebrow, StatusBadge } from '@/components';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

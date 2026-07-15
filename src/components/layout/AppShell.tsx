@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eyebrow } from './Eyebrow';
+import { Eyebrow } from '@/components/ui';
 import { colors, spacing, titleGradient } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

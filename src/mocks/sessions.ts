@@ -1,24 +1,8 @@
-export type SessionLabel = 'REAL' | 'SPOOF';
-
-export type RecentSession = {
-	id: string;
-	score: number;
-	label: SessionLabel;
-};
-
-export type HistorySession = {
-	id: string;
-	label: SessionLabel;
-	score: number;
-	duration: string;
-	ago: string;
-};
-
-export type ChunkTimelineItem = {
-	time: string;
-	score: number;
-	label: SessionLabel;
-};
+import type {
+	ChunkTimelineItem,
+	HistorySession,
+	RecentSession,
+} from '@/types';
 
 export const recentSessions: RecentSession[] = [
 	{ id: 'a3f9…c2', score: 0.18, label: 'REAL' },

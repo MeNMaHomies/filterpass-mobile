@@ -1,5 +1,5 @@
-import { AppShell } from '@/components/filterpass';
-import { HistoryScreen } from '@/features/history/HistoryScreen';
+import { AppShell } from '@/components';
+import { HistoryScreen } from '@/features/history';
 
 export default function HistoryIndexRoute() {
 	return (

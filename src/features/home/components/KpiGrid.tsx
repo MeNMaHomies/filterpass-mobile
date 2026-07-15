@@ -1,8 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Card } from './Card';
-import { Eyebrow } from './Eyebrow';
-import { LiveDot } from './LiveDot';
-import type { KpiItem } from '@/mocks/kpis';
+import { Card, Eyebrow, LiveDot } from '@/components/ui';
+import type { KpiItem } from '@/types';
 import { colors } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

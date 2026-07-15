@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Button, Card, Eyebrow } from '@/components/filterpass';
+import { Button, Card, Eyebrow } from '@/components';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

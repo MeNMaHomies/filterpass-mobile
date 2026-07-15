@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
-import { Card, StatusBadge } from '@/components/filterpass';
+import { Card, StatusBadge } from '@/components';
 import { historySessions } from '@/mocks/sessions';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
