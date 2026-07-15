@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import {
 	ScrollView,
 	View,
@@ -5,35 +6,65 @@ import {
 	TextInput,
 	Pressable,
 	StyleSheet,
+	ActivityIndicator,
+	RefreshControl,
 } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { RefreshCw } from 'lucide-react-native';
 import { Card, StatusBadge } from '@/components';
-import { historySessions } from '@/mocks/sessions';
+import { useHistorySessions } from '../hooks/useHistorySessions';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 export function HistoryScreen() {
 	const router = useRouter();
+	const { sessions, loading, refreshing, error, refresh } =
+		useHistorySessions();
+	const [query, setQuery] = useState('');
+
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return sessions;
+		return sessions.filter((s) => s.id.toLowerCase().includes(q));
+	}, [sessions, query]);
 
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			refreshControl={
+				<RefreshControl
+					refreshing={refreshing}
+					onRefresh={refresh}
+					tintColor={colors.primary}
+				/>
+			}
 		>
 			<View style={styles.searchRow}>
 				<TextInput
 					placeholder="Search session id…"
 					placeholderTextColor={colors.muted2}
 					style={styles.search}
+					value={query}
+					onChangeText={setQuery}
 				/>
-				<Pressable style={styles.refreshBtn}>
+				<Pressable style={styles.refreshBtn} onPress={refresh}>
 					<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
 				</Pressable>
 			</View>
 
-			{historySessions.map((s) => (
+			{loading && sessions.length === 0 ? (
+				<ActivityIndicator color={colors.primary} />
+			) : null}
+
+			{error ? <Text style={styles.error}>{error}</Text> : null}
+
+			{!loading && filtered.length === 0 ? (
+				<Text style={styles.empty}>No sessions found</Text>
+			) : null}
+
+			{filtered.map((s) => (
 				<Pressable
 					key={s.id}
 					onPress={() => router.push(`/history/${s.id}` as Href)}
@@ -90,6 +121,17 @@ const styles = StyleSheet.create({
 		borderColor: colors.border,
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	error: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.destructive,
+		marginBottom: 12,
+	},
+	empty: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
 	},
 	row: {
 		paddingHorizontal: 14,

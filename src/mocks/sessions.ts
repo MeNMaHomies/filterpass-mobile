@@ -5,9 +5,9 @@ import type {
 } from '@/types';
 
 export const recentSessions: RecentSession[] = [
-	{ id: 'a3f9…c2', score: 0.18, label: 'REAL' },
-	{ id: 'b7e1…9a', score: 0.72, label: 'SPOOF' },
-	{ id: 'c4d2…1f', score: 0.44, label: 'REAL' },
+	{ id: 'a3f9…c2', sessionId: 'a3f9c2e1', score: 0.18, label: 'REAL' },
+	{ id: 'b7e1…9a', sessionId: 'b7e19a44', score: 0.72, label: 'SPOOF' },
+	{ id: 'c4d2…1f', sessionId: 'c4d21f88', score: 0.44, label: 'REAL' },
 ];
 
 export const historySessions: HistorySession[] = [

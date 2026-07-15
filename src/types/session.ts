@@ -2,6 +2,7 @@ export type SessionLabel = 'REAL' | 'SPOOF';
 
 export type RecentSession = {
 	id: string;
+	sessionId: string;
 	score: number;
 	label: SessionLabel;
 };
