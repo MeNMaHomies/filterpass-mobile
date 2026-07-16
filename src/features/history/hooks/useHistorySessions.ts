@@ -8,6 +8,7 @@ import {
 	shortSessionId,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
+import { loadSessionDefaults } from '@/features/settings/sessionDefaults';
 
 const PAGE_SIZE = 50;
 
@@ -24,12 +25,17 @@ type HistorySessionsState = {
 
 function mapSessionRow(
 	s: Awaited<ReturnType<typeof listHistorySessions>>[number],
+	realThreshold: number,
 ): HistorySession {
 	return {
 		id: s.session_id,
 		label:
 			s.avg_session_score !== null
-				? deriveSessionLabel(s.avg_session_score, s.spoof_threshold)
+				? deriveSessionLabel(
+						s.avg_session_score,
+						s.spoof_threshold,
+						realThreshold,
+					)
 				: 'REAL',
 		score: s.avg_session_score ?? 0,
 		duration: formatDurationFromTimestamps(s.created_at, s.closed_at),
@@ -46,6 +52,7 @@ export function useHistorySessions(): HistorySessionsState {
 	const [hasMore, setHasMore] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const offsetRef = useRef(0);
+	const realThresholdRef = useRef(0.4);
 
 	const loadPage = useCallback(async (mode: 'initial' | 'refresh' | 'more') => {
 		if (mode === 'more') setLoadingMore(true);
@@ -57,11 +64,18 @@ export function useHistorySessions(): HistorySessionsState {
 		const offset = mode === 'more' ? offsetRef.current : 0;
 
 		try {
+			if (mode !== 'more') {
+				const defaults = await loadSessionDefaults();
+				realThresholdRef.current = defaults.real_threshold;
+			}
+
 			const rows = await listHistorySessions({
 				limit: PAGE_SIZE,
 				offset,
 			});
-			const mapped = rows.map(mapSessionRow);
+			const mapped = rows.map((row) =>
+				mapSessionRow(row, realThresholdRef.current),
+			);
 
 			setSessions((prev) =>
 				mode === 'more' ? [...prev, ...mapped] : mapped,

@@ -11,6 +11,13 @@ import { useRouter, type Href } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { EmptyState, ErrorBanner, Eyebrow, ScreenLoader } from '@/components';
 import { HistorySessionRow } from '../components/HistorySessionRow';
+import {
+	HistoryFilters,
+	hasActiveHistoryFilters,
+	sessionMatchesDateFilter,
+	type DateFilter,
+	type LabelFilter,
+} from '../components/HistoryFilters';
 import { useHistorySessions } from '../hooks/useHistorySessions';
 import { useBackendHealth } from '@/features/health';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
@@ -50,18 +57,25 @@ export function HistoryScreen() {
 		loadMore,
 	} = useHistorySessions();
 	const [query, setQuery] = useState('');
+	const [labelFilter, setLabelFilter] = useState<LabelFilter>('all');
+	const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+
+	const filtersActive = hasActiveHistoryFilters(labelFilter, dateFilter, query);
 
 	const filtered = useMemo(() => {
 		const q = query.trim().toLowerCase();
-		const base = q
-			? sessions.filter((s) => s.id.toLowerCase().includes(q))
-			: sessions;
+		const base = sessions.filter((s) => {
+			if (q && !s.id.toLowerCase().includes(q)) return false;
+			if (labelFilter !== 'all' && s.label !== labelFilter) return false;
+			if (!sessionMatchesDateFilter(s.sortTs, dateFilter)) return false;
+			return true;
+		});
 		return [...base].sort((a, b) => b.sortTs - a.sortTs);
-	}, [sessions, query]);
+	}, [sessions, query, labelFilter, dateFilter]);
 
 	const spoofCount = useMemo(
-		() => sessions.filter((s) => s.label === 'SPOOF').length,
-		[sessions],
+		() => filtered.filter((s) => s.label === 'SPOOF').length,
+		[filtered],
 	);
 
 	const listItems = useMemo(() => {
@@ -124,6 +138,17 @@ export function HistoryScreen() {
 		router.push('/live' as Href);
 	}, [router]);
 
+	const clearFilters = useCallback(() => {
+		setQuery('');
+		setLabelFilter('all');
+		setDateFilter('all');
+	}, []);
+
+	const emptyTitle = filtersActive ? 'No matches' : 'No sessions found';
+	const emptyDescription = filtersActive
+		? 'Try clearing search or filters.'
+		: 'Completed live sessions will appear here.';
+
 	const listHeader = useMemo(
 		() => (
 			<View style={styles.header}>
@@ -131,10 +156,14 @@ export function HistoryScreen() {
 					<View style={styles.summary}>
 						<Eyebrow>Overview</Eyebrow>
 						<Text style={styles.summaryText}>
-							{sessions.length} session{sessions.length === 1 ? '' : 's'}
+							{filtersActive
+								? `${filtered.length} of ${sessions.length} session${sessions.length === 1 ? '' : 's'}`
+								: `${sessions.length} session${sessions.length === 1 ? '' : 's'}`}
 							{' · '}
 							{spoofCount} spoof
-							{sessions[0] ? ` · last ${sessions[0].ago}` : ''}
+							{!filtersActive && sessions[0]
+								? ` · last ${sessions[0].ago}`
+								: ''}
 						</Text>
 					</View>
 				) : null}
@@ -155,6 +184,15 @@ export function HistoryScreen() {
 					/>
 				</View>
 
+				{sessions.length > 0 || filtersActive ? (
+					<HistoryFilters
+						labelFilter={labelFilter}
+						dateFilter={dateFilter}
+						onLabelChange={setLabelFilter}
+						onDateChange={setDateFilter}
+					/>
+				) : null}
+
 				{loading && sessions.length === 0 ? <ScreenLoader /> : null}
 
 				{error && !backendError ? (
@@ -163,28 +201,34 @@ export function HistoryScreen() {
 
 				{!loading && !error && filtered.length === 0 ? (
 					<EmptyState
-						title={query.trim() ? 'No matches' : 'No sessions found'}
-						description={
-							query.trim()
-								? 'Try a different session id.'
-								: 'Completed live sessions will appear here.'
+						title={emptyTitle}
+						description={emptyDescription}
+						actionLabel={
+							filtersActive
+								? 'Clear filters'
+								: 'Start live session'
 						}
-						actionLabel={query.trim() ? undefined : 'Start live session'}
-						onAction={query.trim() ? undefined : openLive}
+						onAction={filtersActive ? clearFilters : openLive}
 					/>
 				) : null}
 			</View>
 		),
 		[
 			sessions,
+			filtered.length,
 			spoofCount,
 			query,
+			labelFilter,
+			dateFilter,
+			filtersActive,
 			loading,
 			error,
 			backendError,
-			filtered.length,
+			emptyTitle,
+			emptyDescription,
 			refresh,
 			openLive,
+			clearFilters,
 		],
 	);
 
@@ -203,7 +247,7 @@ export function HistoryScreen() {
 				ListFooterComponent={listFooter}
 				stickyHeaderIndices={stickyHeaderIndices}
 				getItemType={(item) => item.kind}
-				onEndReached={query.trim() ? undefined : loadMore}
+				onEndReached={filtersActive ? undefined : loadMore}
 				onEndReachedThreshold={0.4}
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={styles.listContent}
@@ -251,7 +295,7 @@ const styles = StyleSheet.create({
 		borderCurve: 'continuous',
 		paddingHorizontal: 12,
 		minHeight: 48,
-		marginBottom: 14,
+		marginBottom: 10,
 	},
 	searchIcon: {
 		marginRight: 8,
