@@ -5,11 +5,23 @@ import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type LiveWarmupViewProps = {
+	bufferFillSamples?: number;
+	bufferTargetSamples?: number;
 	onCancel?: () => void;
 };
 
-export function LiveWarmupView({ onCancel }: LiveWarmupViewProps) {
-	const fill = 68;
+export function LiveWarmupView({
+	bufferFillSamples = 0,
+	bufferTargetSamples = 1,
+	onCancel,
+}: LiveWarmupViewProps) {
+	const fill =
+		bufferTargetSamples > 0
+			? Math.min(
+					100,
+					Math.round((bufferFillSamples / bufferTargetSamples) * 100),
+				)
+			: 0;
 
 	return (
 		<View style={styles.root}>
@@ -20,7 +32,10 @@ export function LiveWarmupView({ onCancel }: LiveWarmupViewProps) {
 				<View style={styles.track}>
 					<View style={[styles.fill, { width: `${fill}%` }]} />
 				</View>
-				<Text style={styles.progressMeta}>6,800 / 10,000 samples</Text>
+				<Text style={styles.progressMeta}>
+					{bufferFillSamples.toLocaleString()} /{' '}
+					{bufferTargetSamples.toLocaleString()} samples
+				</Text>
 			</View>
 
 			<Card style={styles.infoCard}>

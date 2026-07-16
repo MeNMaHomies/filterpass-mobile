@@ -9,15 +9,31 @@ import {
 	ScoreGauge,
 	StatusBadge,
 } from '@/components';
-import { liveChunkHistory } from '@/mocks/sessions';
+import type { SessionLabel } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type LiveActiveViewProps = {
+	sessionScore?: number;
+	chunkIdx?: number;
+	label?: SessionLabel;
+	chunkHistory?: number[];
+	framesSeen?: number;
+	lastRtf?: number | null;
+	lastLatencyMs?: number | null;
 	onStop?: () => void;
 };
 
-export function LiveActiveView({ onStop }: LiveActiveViewProps) {
+export function LiveActiveView({
+	sessionScore = 0,
+	chunkIdx = 0,
+	label = 'REAL',
+	chunkHistory = [],
+	framesSeen = 0,
+	lastRtf = null,
+	lastLatencyMs = null,
+	onStop,
+}: LiveActiveViewProps) {
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}
@@ -25,13 +41,13 @@ export function LiveActiveView({ onStop }: LiveActiveViewProps) {
 		>
 			<Card glow style={styles.gaugeCard}>
 				<View style={styles.gaugeHeader}>
-					<StatusBadge label="REAL" variant="REAL" />
+					<StatusBadge label={label} variant={label} />
 					<View style={styles.chunkRow}>
 						<LiveDot />
-						<Text style={styles.chunkLabel}>chunk 47</Text>
+						<Text style={styles.chunkLabel}>chunk {chunkIdx}</Text>
 					</View>
 				</View>
-				<ScoreGauge score={0.28} />
+				<ScoreGauge score={sessionScore} />
 			</Card>
 
 			<Card style={styles.section}>
@@ -61,14 +77,23 @@ export function LiveActiveView({ onStop }: LiveActiveViewProps) {
 
 			<Card style={styles.section}>
 				<Eyebrow>Chunk history</Eyebrow>
-				<ChunkSparkline chunks={liveChunkHistory} />
+				{chunkHistory.length > 0 ? (
+					<ChunkSparkline chunks={chunkHistory} />
+				) : (
+					<Text style={styles.empty}>Waiting for scores…</Text>
+				)}
 			</Card>
 
 			<View style={styles.metrics}>
 				{[
-					['RTF', '0.29'],
-					['Frames', '1,204'],
-					['Latency', '18ms'],
+					['RTF', lastRtf !== null ? lastRtf.toFixed(2) : '—'],
+					['Frames', framesSeen.toLocaleString()],
+					[
+						'Latency',
+						lastLatencyMs !== null
+							? `${Math.round(lastLatencyMs)}ms`
+							: '—',
+					],
 				].map(([k, v]) => (
 					<View key={k} style={styles.metric}>
 						<Text style={styles.metricLabel}>{k}</Text>
@@ -121,6 +146,12 @@ const styles = StyleSheet.create({
 		marginBottom: 10,
 	},
 	waveform: {
+		marginTop: 6,
+	},
+	empty: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
 		marginTop: 6,
 	},
 	metrics: {
