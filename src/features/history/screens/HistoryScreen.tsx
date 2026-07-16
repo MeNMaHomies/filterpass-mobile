@@ -45,7 +45,7 @@ type ListItem = DayHeaderItem | SessionItem;
 
 export function HistoryScreen() {
 	const router = useRouter();
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const { error: backendError } = useBackendHealth();
 	const {
 		sessions,
@@ -250,7 +250,7 @@ export function HistoryScreen() {
 				onEndReached={filtersActive ? undefined : loadMore}
 				onEndReachedThreshold={0.4}
 				showsVerticalScrollIndicator={false}
-				contentContainerStyle={styles.listContent}
+				contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
 				refreshControl={
 					<RefreshControl
 						refreshing={refreshing}

@@ -24,14 +24,14 @@ export function LiveIdleView({
 	onClearError,
 	busy = false,
 }: LiveIdleViewProps) {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const badgeVariant =
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 
 	return (
 		<ScrollView
 			style={styles.fill}
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}

@@ -46,7 +46,7 @@ function buildScorePath(
 }
 
 export function ReportScreen({ sessionId }: ReportScreenProps) {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const {
 		duration,
 		label,
@@ -123,7 +123,7 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			{...scrollProps}
 		>

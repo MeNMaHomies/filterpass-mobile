@@ -39,11 +39,11 @@ export function LiveActiveView({
 	onStop,
 	onClearError,
 }: LiveActiveViewProps) {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}

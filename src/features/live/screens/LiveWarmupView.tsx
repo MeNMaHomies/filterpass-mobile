@@ -26,7 +26,7 @@ export function LiveWarmupView({
 	onCancel,
 	onClearError,
 }: LiveWarmupViewProps) {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const fill =
 		bufferTargetSamples > 0
 			? Math.min(
@@ -46,7 +46,7 @@ export function LiveWarmupView({
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}

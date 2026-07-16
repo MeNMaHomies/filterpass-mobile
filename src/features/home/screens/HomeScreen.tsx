@@ -17,7 +17,7 @@ import { fontFamilies } from '@/theme/typography';
 
 export function HomeScreen() {
 	const router = useRouter();
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const { kpis, recentSessions, loading, error, refresh } = useHomeOverview();
 	const { error: backendError } = useBackendHealth();
 	const { push } = router;
@@ -35,7 +35,7 @@ export function HomeScreen() {
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			refreshControl={
 				<RefreshControl

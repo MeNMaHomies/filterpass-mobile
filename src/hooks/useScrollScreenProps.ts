@@ -7,12 +7,15 @@ export function useScrollScreenProps() {
 	const insets = useSafeAreaInsets();
 
 	return useMemo(() => {
-		const bottom = spacing.contentBottom + Math.max(insets.bottom, 0);
+		const bottomPadding = spacing.contentBottom + Math.max(insets.bottom, 0);
 
 		return {
+			/** Apply to contentContainerStyle — works on Android + iOS. */
+			bottomPadding,
 			contentInsetAdjustmentBehavior: 'automatic' as const,
-			contentInset: { bottom },
-			scrollIndicatorInsets: { bottom },
+			/** iOS-only inset; prefer bottomPadding on contentContainerStyle. */
+			contentInset: { bottom: bottomPadding },
+			scrollIndicatorInsets: { bottom: bottomPadding },
 		};
 	}, [insets.bottom]);
 }

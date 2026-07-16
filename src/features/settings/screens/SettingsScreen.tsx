@@ -32,7 +32,7 @@ function formatThreshold(value: number): string {
 }
 
 export function SettingsScreen() {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const [defaults, setDefaults] = useState<SessionDefaults>(
 		API_SESSION_DEFAULTS,
 	);
@@ -104,22 +104,20 @@ export function SettingsScreen() {
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}
 		>
 			<Card style={styles.banner}>
 				<Text style={styles.bannerText}>
-					Settings apply to the{' '}
-					<Text style={styles.bannerStrong}>next</Text> session only.
-					Stored on device.
+					Applies to the <Text style={styles.bannerStrong}>next</Text> session.
 				</Text>
 				<Text
 					style={styles.apiUrl}
 					accessibilityLabel={`API base URL ${apiBaseUrl}`}
 				>
-					API {apiBaseUrl}
+					{apiBaseUrl}
 				</Text>
 			</Card>
 
@@ -129,7 +127,7 @@ export function SettingsScreen() {
 					accessibilityLiveRegion="polite"
 					accessibilityRole="text"
 				>
-					Settings saved
+					Saved
 				</Text>
 			) : null}
 
@@ -152,56 +150,38 @@ export function SettingsScreen() {
 				))}
 			</Card>
 
-			<Eyebrow>Score smoothing</Eyebrow>
+			<Eyebrow>Smoothing</Eyebrow>
 			<Card style={styles.group}>
-				<Text style={styles.sectionBody}>
-					The raw model output for each audio chunk is averaged over time.
-					The smoothed score is compared against the thresholds to decide the
-					label.
-				</Text>
-				<View style={styles.fieldBlock}>
-					<Text style={styles.fieldTitle}>Smoothing factor</Text>
-					<Text style={styles.fieldHint}>
-						How quickly the score reacts to changes.
+				<View style={styles.sliderHeader}>
+					<Text style={styles.fieldTitle}>EMA alpha</Text>
+					<Text style={styles.fieldValue}>
+						{defaults.ema_alpha.toFixed(2)}
 					</Text>
-					<View style={styles.fieldRow}>
-						<Text style={styles.fieldValue}>
-							{defaults.ema_alpha.toFixed(2)}
-						</Text>
-						<Text style={styles.fieldMeta}>
-							default 0.3 · Higher = more reactive
-						</Text>
-					</View>
-					<Slider
-						minimumValue={0.1}
-						maximumValue={0.9}
-						step={0.05}
-						value={defaults.ema_alpha}
-						onValueChange={(v) =>
-							setDefaults((d) => ({ ...d, ema_alpha: v }))
-						}
-						minimumTrackTintColor={colors.primary}
-						maximumTrackTintColor={colors.border}
-						thumbTintColor={colors.primary}
-						accessibilityLabel="Smoothing factor"
-						accessibilityValue={{
-							min: 0.1,
-							max: 0.9,
-							now: defaults.ema_alpha,
-							text: defaults.ema_alpha.toFixed(2),
-						}}
-					/>
 				</View>
+				<Slider
+					minimumValue={0.1}
+					maximumValue={0.9}
+					step={0.05}
+					value={defaults.ema_alpha}
+					onValueChange={(v) =>
+						setDefaults((d) => ({ ...d, ema_alpha: v }))
+					}
+					minimumTrackTintColor={colors.primary}
+					maximumTrackTintColor={colors.border}
+					thumbTintColor={colors.primary}
+					accessibilityLabel="Smoothing factor"
+					accessibilityValue={{
+						min: 0.1,
+						max: 0.9,
+						now: defaults.ema_alpha,
+						text: defaults.ema_alpha.toFixed(2),
+					}}
+				/>
+				<Text style={styles.hint}>Higher = more reactive</Text>
 			</Card>
 
-			<Eyebrow>Decision thresholds</Eyebrow>
+			<Eyebrow>Thresholds</Eyebrow>
 			<Card style={styles.group}>
-				<Text style={styles.sectionBody}>
-					Scores at or above the spoof line are flagged as spoof. Scores below
-					the real line are called real. Scores between the two land in the
-					uncertain band.
-				</Text>
-
 				<View style={styles.thresholdRow}>
 					<View style={styles.thresholdField}>
 						<Text style={styles.fieldTitle}>Real below</Text>
@@ -215,10 +195,9 @@ export function SettingsScreen() {
 							style={styles.input}
 							accessibilityLabel="Real below threshold"
 						/>
-						<Text style={styles.inputMeta}>EMA SCORE</Text>
 					</View>
 					<View style={styles.thresholdField}>
-						<Text style={styles.fieldTitle}>Spoof at or above</Text>
+						<Text style={styles.fieldTitle}>Spoof at</Text>
 						<TextInput
 							value={spoofText}
 							onChangeText={setSpoofText}
@@ -229,29 +208,20 @@ export function SettingsScreen() {
 							style={styles.input}
 							accessibilityLabel="Spoof at or above threshold"
 						/>
-						<Text style={styles.inputMeta}>EMA SCORE</Text>
 					</View>
 				</View>
-
 				<ThresholdBand
 					realThreshold={defaults.real_threshold}
 					spoofThreshold={defaults.spoof_threshold}
 				/>
 			</Card>
 
-			<Eyebrow>Voice activity detection</Eyebrow>
+			<Eyebrow>Voice activity</Eyebrow>
 			<Card style={styles.group}>
-				<Text style={styles.sectionBody}>
-					Only frames that contain speech are sent through inference. Silent
-					frames are dropped before chunking.
-				</Text>
-
 				<View style={styles.vadRow}>
 					<View style={styles.vadCopy}>
 						<Text style={styles.fieldTitle}>Sensitivity</Text>
-						<Text style={styles.fieldHint}>
-							0 = least aggressive, 3 = most aggressive.
-						</Text>
+						<Text style={styles.hint}>0–3 · higher cuts more silence</Text>
 					</View>
 					<SettingSelect
 						value={defaults.vad_mode}
@@ -261,22 +231,14 @@ export function SettingsScreen() {
 						}
 						accessibilityLabel="VAD sensitivity"
 					/>
-					<View style={styles.vadMeta}>
-						<Text style={styles.vadMetaTitle}>default 2</Text>
-						<Text style={styles.vadMetaBody}>
-							Higher values cut more silence but risk missing softer speech.
-						</Text>
-					</View>
 				</View>
 
 				<View style={styles.vadDivider} />
 
 				<View style={styles.vadRow}>
 					<View style={styles.vadCopy}>
-						<Text style={styles.fieldTitle}>Detection frame size</Text>
-						<Text style={styles.fieldHint}>
-							Length of each frame the detector inspects.
-						</Text>
+						<Text style={styles.fieldTitle}>Frame size</Text>
+						<Text style={styles.hint}>VAD window</Text>
 					</View>
 					<SettingSelect
 						value={defaults.vad_frame_ms}
@@ -287,9 +249,6 @@ export function SettingsScreen() {
 						suffix="ms"
 						accessibilityLabel="VAD detection frame size"
 					/>
-					<View style={styles.vadMeta}>
-						<Text style={styles.vadMetaTitle}>default 30 ms</Text>
-					</View>
 				</View>
 			</Card>
 
@@ -317,8 +276,8 @@ const styles = StyleSheet.create({
 		paddingTop: 12,
 	},
 	banner: {
-		padding: 14,
-		marginBottom: 16,
+		padding: 12,
+		marginBottom: 14,
 		backgroundColor: colors.primarySoft,
 		borderColor: 'rgba(59,130,246,0.28)',
 	},
@@ -326,14 +285,14 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
 		color: colors.muted,
-		lineHeight: 20,
+		lineHeight: 18,
 	},
 	bannerStrong: {
 		color: colors.foreground,
 		fontFamily: fontFamilies.sansSemibold,
 	},
 	apiUrl: {
-		marginTop: 8,
+		marginTop: 6,
 		fontFamily: fontFamilies.mono,
 		fontSize: 11,
 		color: colors.muted2,
@@ -342,19 +301,12 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.sansSemibold,
 		fontSize: 13,
 		color: colors.accent,
-		marginBottom: 12,
+		marginBottom: 10,
 	},
 	group: {
 		padding: 14,
-		marginBottom: 14,
-		marginTop: 8,
-	},
-	sectionBody: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.muted2,
-		lineHeight: 19,
-		marginBottom: 14,
+		marginBottom: 12,
+		marginTop: 6,
 	},
 	row: {
 		flexDirection: 'row',
@@ -377,38 +329,27 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: colors.foreground,
 	},
-	fieldBlock: {
-		gap: 4,
+	sliderHeader: {
+		flexDirection: 'row',
+		justifyContent: 'space-between',
+		alignItems: 'center',
+		marginBottom: 4,
 	},
 	fieldTitle: {
 		fontFamily: fontFamilies.sansSemibold,
 		fontSize: 14,
 		color: colors.foreground,
 	},
-	fieldHint: {
+	fieldValue: {
+		fontFamily: fontFamilies.mono,
+		fontSize: 15,
+		color: colors.primary,
+	},
+	hint: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 12,
 		color: colors.muted2,
-		marginBottom: 8,
-	},
-	fieldRow: {
-		flexDirection: 'row',
-		alignItems: 'baseline',
-		justifyContent: 'space-between',
-		gap: 10,
-		marginBottom: 4,
-	},
-	fieldValue: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 16,
-		color: colors.primary,
-	},
-	fieldMeta: {
-		flex: 1,
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		textAlign: 'right',
+		marginTop: 4,
 	},
 	thresholdRow: {
 		flexDirection: 'row',
@@ -430,41 +371,25 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		color: colors.foreground,
 	},
-	inputMeta: {
-		fontFamily: fontFamilies.sansBold,
-		fontSize: 9,
-		letterSpacing: 1.1,
-		color: colors.muted2,
-	},
 	vadRow: {
-		gap: 10,
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: 12,
 	},
 	vadCopy: {
+		flex: 1,
 		gap: 2,
-	},
-	vadMeta: {
-		gap: 2,
-	},
-	vadMetaTitle: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 11,
-		color: colors.muted2,
-	},
-	vadMetaBody: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		lineHeight: 15,
 	},
 	vadDivider: {
 		height: StyleSheet.hairlineWidth,
 		backgroundColor: colors.border,
-		marginVertical: 14,
+		marginVertical: 12,
 	},
 	actions: {
 		flexDirection: 'row',
 		gap: 10,
-		marginTop: 8,
+		marginTop: 4,
 	},
 	actionBtn: {
 		flex: 1,
