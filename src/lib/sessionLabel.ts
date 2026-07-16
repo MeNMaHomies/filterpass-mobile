@@ -1,12 +1,22 @@
 import type { SessionLabel } from '@/types';
 
 /**
- * Derive REAL/SPOOF from session_score and per-session spoof_threshold.
- * Backend never sends a label on score events.
+ * Derive label from session_score.
+ * Backend only stores spoof_threshold; real_threshold is a client-side band
+ * (scores in [real, spoof) → UNCERTAIN). Omit realThreshold for binary labels.
  */
 export function deriveSessionLabel(
 	sessionScore: number,
 	spoofThreshold: number,
+	realThreshold?: number,
 ): SessionLabel {
-	return sessionScore >= spoofThreshold ? 'SPOOF' : 'REAL';
+	if (sessionScore >= spoofThreshold) return 'SPOOF';
+	if (
+		realThreshold != null &&
+		Number.isFinite(realThreshold) &&
+		sessionScore >= realThreshold
+	) {
+		return 'UNCERTAIN';
+	}
+	return 'REAL';
 }

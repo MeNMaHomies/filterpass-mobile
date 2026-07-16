@@ -114,7 +114,12 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 	}
 
 	const labelDisplay = label === '—' ? '—' : label;
-	const labelColor = label === 'SPOOF' ? colors.destructive : colors.accent;
+	const labelColor =
+		label === 'SPOOF'
+			? colors.destructive
+			: label === 'UNCERTAIN'
+				? colors.amber
+				: colors.accent;
 
 	return (
 		<ScrollView

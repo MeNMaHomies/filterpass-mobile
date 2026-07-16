@@ -1,23 +1,41 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import {
+	ScrollView,
+	View,
+	Text,
+	TextInput,
+	StyleSheet,
+} from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Button, Card, Eyebrow, ScreenLoader } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { hapticSuccess } from '@/lib/haptics';
-import { colors, spacing } from '@/theme/tokens';
+import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
+import { ThresholdBand } from '../components/ThresholdBand';
 import {
 	API_SESSION_DEFAULTS,
 	loadSessionDefaults,
 	resetSessionDefaults,
 	saveSessionDefaults,
+	withClampedThresholds,
 	type SessionDefaults,
 } from '../sessionDefaults';
+
+function formatThreshold(value: number): string {
+	return value.toFixed(2);
+}
 
 export function SettingsScreen() {
 	const scrollProps = useScrollScreenProps();
 	const [defaults, setDefaults] = useState<SessionDefaults>(
 		API_SESSION_DEFAULTS,
+	);
+	const [realText, setRealText] = useState(
+		formatThreshold(API_SESSION_DEFAULTS.real_threshold),
+	);
+	const [spoofText, setSpoofText] = useState(
+		formatThreshold(API_SESSION_DEFAULTS.spoof_threshold),
 	);
 	const [loaded, setLoaded] = useState(false);
 	const [saved, setSaved] = useState(false);
@@ -25,9 +43,41 @@ export function SettingsScreen() {
 	useEffect(() => {
 		loadSessionDefaults().then((d) => {
 			setDefaults(d);
+			setRealText(formatThreshold(d.real_threshold));
+			setSpoofText(formatThreshold(d.spoof_threshold));
 			setLoaded(true);
 		});
 	}, []);
+
+	const applyThresholds = useCallback(
+		(patch: Partial<Pick<SessionDefaults, 'real_threshold' | 'spoof_threshold'>>) => {
+			setDefaults((d) => {
+				const next = withClampedThresholds(d, patch);
+				setRealText(formatThreshold(next.real_threshold));
+				setSpoofText(formatThreshold(next.spoof_threshold));
+				return next;
+			});
+		},
+		[],
+	);
+
+	const commitRealText = useCallback(() => {
+		const parsed = Number.parseFloat(realText);
+		if (!Number.isFinite(parsed)) {
+			setRealText(formatThreshold(defaults.real_threshold));
+			return;
+		}
+		applyThresholds({ real_threshold: parsed });
+	}, [applyThresholds, defaults.real_threshold, realText]);
+
+	const commitSpoofText = useCallback(() => {
+		const parsed = Number.parseFloat(spoofText);
+		if (!Number.isFinite(parsed)) {
+			setSpoofText(formatThreshold(defaults.spoof_threshold));
+			return;
+		}
+		applyThresholds({ spoof_threshold: parsed });
+	}, [applyThresholds, defaults.spoof_threshold, spoofText]);
 
 	const handleSave = useCallback(async () => {
 		await saveSessionDefaults(defaults);
@@ -39,6 +89,8 @@ export function SettingsScreen() {
 	const handleReset = useCallback(async () => {
 		const d = await resetSessionDefaults();
 		setDefaults(d);
+		setRealText(formatThreshold(d.real_threshold));
+		setSpoofText(formatThreshold(d.spoof_threshold));
 	}, []);
 
 	if (!loaded) {
@@ -49,6 +101,7 @@ export function SettingsScreen() {
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
 			{...scrollProps}
 		>
 			<Card style={styles.banner}>
@@ -88,43 +141,24 @@ export function SettingsScreen() {
 				))}
 			</Card>
 
-			<Eyebrow>Inference</Eyebrow>
+			<Eyebrow>Score smoothing</Eyebrow>
 			<Card style={styles.group}>
-				<View style={styles.sliderBlock}>
-					<View style={styles.sliderHeader}>
-						<Text style={styles.rowLabel}>Spoof threshold</Text>
-						<Text style={styles.sliderValue}>
-							{defaults.spoof_threshold.toFixed(2)}
-						</Text>
-					</View>
-					<Slider
-						minimumValue={0.1}
-						maximumValue={0.9}
-						step={0.05}
-						value={defaults.spoof_threshold}
-						onValueChange={(v) =>
-							setDefaults((d) => ({ ...d, spoof_threshold: v }))
-						}
-						minimumTrackTintColor={colors.primary}
-						maximumTrackTintColor={colors.border}
-						thumbTintColor={colors.primary}
-						accessibilityLabel="Spoof threshold"
-						accessibilityValue={{
-							min: 0.1,
-							max: 0.9,
-							now: defaults.spoof_threshold,
-							text: defaults.spoof_threshold.toFixed(2),
-						}}
-					/>
-					<Text style={styles.sliderHint}>
-						Scores at or above this value are labeled SPOOF.
+				<Text style={styles.sectionBody}>
+					The raw model output for each audio chunk is averaged over time.
+					The smoothed score is compared against the thresholds to decide the
+					label.
+				</Text>
+				<View style={styles.fieldBlock}>
+					<Text style={styles.fieldTitle}>Smoothing factor</Text>
+					<Text style={styles.fieldHint}>
+						How quickly the score reacts to changes.
 					</Text>
-				</View>
-				<View style={styles.sliderBlock}>
-					<View style={styles.sliderHeader}>
-						<Text style={styles.rowLabel}>Score smoothing</Text>
-						<Text style={styles.sliderValue}>
+					<View style={styles.fieldRow}>
+						<Text style={styles.fieldValue}>
 							{defaults.ema_alpha.toFixed(2)}
+						</Text>
+						<Text style={styles.fieldMeta}>
+							default 0.3 · Higher = more reactive
 						</Text>
 					</View>
 					<Slider
@@ -138,7 +172,7 @@ export function SettingsScreen() {
 						minimumTrackTintColor={colors.primary}
 						maximumTrackTintColor={colors.border}
 						thumbTintColor={colors.primary}
-						accessibilityLabel="Score smoothing"
+						accessibilityLabel="Smoothing factor"
 						accessibilityValue={{
 							min: 0.1,
 							max: 0.9,
@@ -146,10 +180,52 @@ export function SettingsScreen() {
 							text: defaults.ema_alpha.toFixed(2),
 						}}
 					/>
-					<Text style={styles.sliderHint}>
-						Higher values make the session score react faster to new chunks.
-					</Text>
 				</View>
+			</Card>
+
+			<Eyebrow>Decision thresholds</Eyebrow>
+			<Card style={styles.group}>
+				<Text style={styles.sectionBody}>
+					Scores at or above the spoof line are flagged as spoof. Scores below
+					the real line are called real. Scores between the two land in the
+					uncertain band.
+				</Text>
+
+				<View style={styles.thresholdRow}>
+					<View style={styles.thresholdField}>
+						<Text style={styles.fieldTitle}>Real below</Text>
+						<TextInput
+							value={realText}
+							onChangeText={setRealText}
+							onBlur={commitRealText}
+							onSubmitEditing={commitRealText}
+							keyboardType="decimal-pad"
+							selectTextOnFocus
+							style={styles.input}
+							accessibilityLabel="Real below threshold"
+						/>
+						<Text style={styles.inputMeta}>EMA SCORE</Text>
+					</View>
+					<View style={styles.thresholdField}>
+						<Text style={styles.fieldTitle}>Spoof at or above</Text>
+						<TextInput
+							value={spoofText}
+							onChangeText={setSpoofText}
+							onBlur={commitSpoofText}
+							onSubmitEditing={commitSpoofText}
+							keyboardType="decimal-pad"
+							selectTextOnFocus
+							style={styles.input}
+							accessibilityLabel="Spoof at or above threshold"
+						/>
+						<Text style={styles.inputMeta}>EMA SCORE</Text>
+					</View>
+				</View>
+
+				<ThresholdBand
+					realThreshold={defaults.real_threshold}
+					spoofThreshold={defaults.spoof_threshold}
+				/>
 			</Card>
 
 			<View style={styles.actions}>
@@ -202,6 +278,13 @@ const styles = StyleSheet.create({
 		marginBottom: 14,
 		marginTop: 8,
 	},
+	sectionBody: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
+		lineHeight: 19,
+		marginBottom: 14,
+	},
 	row: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
@@ -223,25 +306,64 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		color: colors.foreground,
 	},
-	sliderBlock: {
-		marginBottom: 18,
+	fieldBlock: {
+		gap: 4,
 	},
-	sliderHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		marginBottom: 8,
-	},
-	sliderValue: {
-		fontFamily: fontFamilies.mono,
+	fieldTitle: {
+		fontFamily: fontFamilies.sansSemibold,
 		fontSize: 14,
-		color: colors.primary,
+		color: colors.foreground,
 	},
-	sliderHint: {
+	fieldHint: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 12,
 		color: colors.muted2,
-		marginTop: 4,
-		lineHeight: 16,
+		marginBottom: 8,
+	},
+	fieldRow: {
+		flexDirection: 'row',
+		alignItems: 'baseline',
+		justifyContent: 'space-between',
+		gap: 10,
+		marginBottom: 4,
+	},
+	fieldValue: {
+		fontFamily: fontFamilies.mono,
+		fontSize: 16,
+		color: colors.primary,
+	},
+	fieldMeta: {
+		flex: 1,
+		fontFamily: fontFamilies.sans,
+		fontSize: 11,
+		color: colors.muted2,
+		textAlign: 'right',
+	},
+	thresholdRow: {
+		flexDirection: 'row',
+		gap: 12,
+	},
+	thresholdField: {
+		flex: 1,
+		gap: 6,
+	},
+	input: {
+		minHeight: 44,
+		borderWidth: 1,
+		borderColor: colors.border,
+		borderRadius: radius.input,
+		borderCurve: 'continuous',
+		backgroundColor: colors.secondary,
+		paddingHorizontal: 12,
+		fontFamily: fontFamilies.mono,
+		fontSize: 16,
+		color: colors.foreground,
+	},
+	inputMeta: {
+		fontFamily: fontFamilies.sansBold,
+		fontSize: 9,
+		letterSpacing: 1.1,
+		color: colors.muted2,
 	},
 	actions: {
 		flexDirection: 'row',

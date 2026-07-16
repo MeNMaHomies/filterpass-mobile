@@ -18,7 +18,9 @@ type HistorySessionRowProps = {
 };
 
 function railColor(label: SessionLabel): string {
-	return label === 'SPOOF' ? colors.destructive : colors.accent;
+	if (label === 'SPOOF') return colors.destructive;
+	if (label === 'UNCERTAIN') return colors.amber;
+	return colors.accent;
 }
 
 export const HistorySessionRow = memo(function HistorySessionRow({

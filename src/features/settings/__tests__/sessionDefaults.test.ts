@@ -2,6 +2,7 @@ import {
 	API_SESSION_DEFAULTS,
 	loadSessionDefaults,
 	saveSessionDefaults,
+	withClampedThresholds,
 } from '@/features/settings/sessionDefaults';
 
 const mockStorage = new Map<string, string>();
@@ -41,15 +42,32 @@ describe('sessionDefaults', () => {
 				sample_rate: 16000,
 				chunk_duration_s: 0.5,
 				ema_alpha: 0.4,
-				spoof_threshold: 0.6,
+				real_threshold: 0.35,
+				spoof_threshold: 0.65,
 			}),
 		);
 		await expect(loadSessionDefaults()).resolves.toEqual({
 			sample_rate: 16000,
 			chunk_duration_s: 0.5,
 			ema_alpha: 0.4,
-			spoof_threshold: 0.6,
+			real_threshold: 0.35,
+			spoof_threshold: 0.65,
 		});
+	});
+
+	it('backfills real_threshold from legacy spoof-only storage', async () => {
+		mockStorage.set(
+			'@filterpass/session_defaults',
+			JSON.stringify({
+				sample_rate: 16000,
+				chunk_duration_s: 0.5,
+				ema_alpha: 0.4,
+				spoof_threshold: 0.6,
+			}),
+		);
+		const loaded = await loadSessionDefaults();
+		expect(loaded.spoof_threshold).toBe(0.6);
+		expect(loaded.real_threshold).toBeLessThan(loaded.spoof_threshold);
 	});
 
 	it('falls back when stored JSON is invalid', async () => {
@@ -67,5 +85,12 @@ describe('sessionDefaults', () => {
 				spoof_threshold: 5,
 			}),
 		).rejects.toThrow();
+	});
+
+	it('clamps real below spoof when editing thresholds', () => {
+		const next = withClampedThresholds(API_SESSION_DEFAULTS, {
+			real_threshold: 0.7,
+		});
+		expect(next.real_threshold).toBeLessThan(next.spoof_threshold);
 	});
 });

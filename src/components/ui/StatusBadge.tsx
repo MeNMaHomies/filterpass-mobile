@@ -2,7 +2,7 @@ import { Text, StyleSheet } from 'react-native';
 import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
-export type StatusVariant = 'REAL' | 'SPOOF' | 'WARMUP' | 'IDLE';
+export type StatusVariant = 'REAL' | 'SPOOF' | 'UNCERTAIN' | 'WARMUP' | 'IDLE';
 
 type StatusBadgeProps = {
 	label: string;
@@ -19,6 +19,11 @@ const variantStyles: Record<
 		bg: colors.destructiveSoft,
 		border: colors.destructive,
 		color: colors.destructive,
+	},
+	UNCERTAIN: {
+		bg: colors.amberSoft,
+		border: colors.amber,
+		color: colors.amber,
 	},
 	WARMUP: { bg: colors.amberSoft, border: colors.amber, color: colors.amber },
 	IDLE: {

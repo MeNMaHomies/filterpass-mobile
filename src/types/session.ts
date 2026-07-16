@@ -1,4 +1,4 @@
-export type SessionLabel = 'REAL' | 'SPOOF';
+export type SessionLabel = 'REAL' | 'SPOOF' | 'UNCERTAIN';
 
 export type RecentSession = {
 	id: string;

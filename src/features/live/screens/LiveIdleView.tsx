@@ -73,9 +73,14 @@ export function LiveIdleView({
 							'Audio length per score',
 						],
 						[
-							'Threshold',
-							defaults ? defaults.spoof_threshold.toFixed(2) : '0.50',
-							'Spoof decision cutoff',
+							'Real below',
+							defaults ? defaults.real_threshold.toFixed(2) : '0.40',
+							'Scores below this are REAL',
+						],
+						[
+							'Spoof at',
+							defaults ? defaults.spoof_threshold.toFixed(2) : '0.60',
+							'Scores at or above are SPOOF',
 						],
 						[
 							'Smoothing',

@@ -81,12 +81,34 @@ export const getInferenceBucketsParamsSchema = z.object({
 });
 
 /** Persisted device settings — validate on read/write from AsyncStorage */
-export const sessionDefaultsSchema = z.object({
-	sample_rate: z.number().int().positive(),
-	chunk_duration_s: z.number().positive(),
-	ema_alpha: z.number().min(0.1).max(0.9),
-	spoof_threshold: z.number().min(0.1).max(0.9),
-});
+export const sessionDefaultsSchema = z
+	.object({
+		sample_rate: z.number().int().positive(),
+		chunk_duration_s: z.number().positive(),
+		ema_alpha: z.number().min(0.1).max(0.9),
+		spoof_threshold: z.number().min(0.1).max(0.9),
+		/** Client-only; scores in [real, spoof) are UNCERTAIN. */
+		real_threshold: z.number().min(0.05).max(0.85).optional(),
+	})
+	.transform((d) => {
+		const spoof = d.spoof_threshold;
+		let real =
+			d.real_threshold ??
+			Math.min(Math.max(spoof - 0.2, 0.1), spoof - 0.05);
+		if (real >= spoof) {
+			real = Math.max(0.05, spoof - 0.05);
+		}
+		return {
+			sample_rate: d.sample_rate,
+			chunk_duration_s: d.chunk_duration_s,
+			ema_alpha: d.ema_alpha,
+			real_threshold: Number(real.toFixed(2)),
+			spoof_threshold: spoof,
+		};
+	})
+	.refine((d) => d.real_threshold < d.spoof_threshold, {
+		message: 'real_threshold must be below spoof_threshold',
+	});
 
 export const createSessionResponseSchema = z.object({
 	session_id: sessionIdSchema,
