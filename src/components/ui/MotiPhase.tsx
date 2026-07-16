@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
-import { AnimatePresence, MotiView } from 'moti';
+import { AnimatePresence, MotiView } from '@/lib/moti';
 import { motiPhase } from '@/theme/motion';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 

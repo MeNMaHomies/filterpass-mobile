@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { MotiView } from 'moti';
+import { MotiView } from '@/lib/moti';
 import { motiEnter, motion } from '@/theme/motion';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
 

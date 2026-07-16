@@ -1,5 +1,5 @@
 import { ActivityIndicator, StyleSheet } from 'react-native';
-import { MotiView } from 'moti';
+import { MotiView } from '@/lib/moti';
 import { Mic } from 'lucide-react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useReduceMotion } from '@/hooks/useReduceMotion';

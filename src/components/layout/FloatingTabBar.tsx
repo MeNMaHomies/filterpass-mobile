@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
-import { MotiView } from 'moti';
+import { MotiView } from '@/lib/moti';
 import { Home, Mic, History, Settings } from 'lucide-react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { colors, radius, spacing } from '@/theme/tokens';
