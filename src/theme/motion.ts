@@ -22,21 +22,7 @@ export const motion = {
 		stiffness: 140,
 		mass: 0.8,
 	},
-	/** Max Moti stagger steps so long lists don’t lag */
+	/** Max stagger steps so long lists don’t lag */
 	staggerMax: 8,
 	staggerMs: 40,
 } as const;
-
-export const motiEnter = {
-	from: { opacity: 0, translateY: 8 },
-	animate: { opacity: 1, translateY: 0 },
-	exit: { opacity: 0, translateY: -6 },
-	transition: { type: 'timing' as const, duration: motion.enter.duration },
-};
-
-export const motiPhase = {
-	from: { opacity: 0, translateY: 10 },
-	animate: { opacity: 1, translateY: 0 },
-	exit: { opacity: 0, translateY: -8 },
-	transition: { type: 'timing' as const, duration: motion.phase.duration },
-};

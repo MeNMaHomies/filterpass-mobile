@@ -1,11 +1,17 @@
-import { useCallback } from 'react';
+import { type ReactNode, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
-import { MotiView } from '@/lib/moti';
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withSpring,
+} from 'react-native-reanimated';
 import { Home, Mic, History, Settings } from 'lucide-react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { motion } from '@/theme/motion';
 import { fontFamilies } from '@/theme/typography';
 
 type TabRoute = BottomTabBarProps['state']['routes'][number];
@@ -23,6 +29,37 @@ const TAB_LABELS: Record<string, string> = {
 	history: 'History',
 	settings: 'Settings',
 };
+
+function AnimatedTabIcon({
+	children,
+	isFocused,
+}: {
+	children: ReactNode;
+	isFocused: boolean;
+}) {
+	const reduceMotion = useReduceMotion();
+	const progress = useSharedValue(isFocused ? 1 : 0);
+
+	useEffect(() => {
+		progress.set(
+			reduceMotion
+				? isFocused
+					? 1
+					: 0
+				: withSpring(isFocused ? 1 : 0, motion.press),
+		);
+	}, [isFocused, progress, reduceMotion]);
+
+	const animatedStyle = useAnimatedStyle(() => {
+		const value = progress.get();
+		return {
+			opacity: 0.72 + value * 0.28,
+			transform: [{ scale: 1 + value * 0.08 }],
+		};
+	});
+
+	return <Animated.View style={animatedStyle}>{children}</Animated.View>;
+}
 
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 	const insets = useSafeAreaInsets();
@@ -66,19 +103,13 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 							accessibilityLabel={label}
 							scaleTo={0.94}
 						>
-							<MotiView
-								animate={{
-									scale: isFocused ? 1.08 : 1,
-									opacity: isFocused ? 1 : 0.72,
-								}}
-								transition={{ type: 'spring', damping: 16, stiffness: 280 }}
-							>
+							<AnimatedTabIcon isFocused={isFocused}>
 								<Icon
 									size={20}
 									color={isFocused ? colors.primary : colors.muted2}
 									strokeWidth={1.75}
 								/>
-							</MotiView>
+							</AnimatedTabIcon>
 							<Text
 								style={[
 									styles.tabLabel,

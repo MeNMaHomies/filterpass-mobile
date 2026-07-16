@@ -1,5 +1,14 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
-import { MotiView } from '@/lib/moti';
+import Animated, {
+	cancelAnimation,
+	interpolate,
+	useAnimatedStyle,
+	useSharedValue,
+	withRepeat,
+	withSequence,
+	withTiming,
+} from 'react-native-reanimated';
 import { Mic } from 'lucide-react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
@@ -18,6 +27,34 @@ export function MicButton({
 }: MicButtonProps) {
 	const reduceMotion = useReduceMotion();
 	const isDisabled = disabled || busy;
+	const pulse = useSharedValue(0);
+
+	useEffect(() => {
+		if (reduceMotion || busy) {
+			cancelAnimation(pulse);
+			pulse.set(0);
+			return;
+		}
+
+		pulse.set(
+			withRepeat(
+				withSequence(
+					withTiming(1, { duration: 1100 }),
+					withTiming(0, { duration: 1100 }),
+				),
+				-1,
+				false,
+			),
+		);
+
+		return () => {
+			cancelAnimation(pulse);
+		};
+	}, [busy, pulse, reduceMotion]);
+
+	const animatedStyle = useAnimatedStyle(() => ({
+		transform: [{ scale: interpolate(pulse.get(), [0, 1], [1, 1.06]) }],
+	}));
 
 	return (
 		<PressableScale
@@ -33,27 +70,9 @@ export function MicButton({
 			{busy ? (
 				<ActivityIndicator color={colors.primary} />
 			) : (
-				<MotiView
-					from={reduceMotion ? undefined : { scale: 1 }}
-					animate={
-						reduceMotion
-							? { scale: 1 }
-							: {
-									scale: [1, 1.06, 1],
-								}
-					}
-					transition={
-						reduceMotion
-							? undefined
-							: {
-									type: 'timing',
-									duration: 2200,
-									loop: true,
-								}
-					}
-				>
+				<Animated.View style={animatedStyle}>
 					<Mic size={28} color={colors.primary} strokeWidth={1.75} />
-				</MotiView>
+				</Animated.View>
 			)}
 		</PressableScale>
 	);
