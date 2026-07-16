@@ -1,7 +1,7 @@
-import { Text, StyleSheet } from 'react-native';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { colors } from '@/theme/tokens';
+import { View, Text, StyleSheet } from 'react-native';
+import { CircleAlert } from 'lucide-react-native';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type ErrorBannerProps = {
@@ -16,36 +16,91 @@ export function ErrorBanner({
 	retryLabel = 'Retry',
 }: ErrorBannerProps) {
 	return (
-		<Card
-			style={styles.card}
+		<View
+			style={styles.wrap}
 			accessibilityRole="alert"
 			accessibilityLiveRegion="polite"
 		>
-			<Text style={styles.message}>{message}</Text>
-			{onRetry ? (
-				<Button
-					variant="ghost"
-					label={retryLabel}
-					onPress={onRetry}
-					accessibilityHint="Tries the failed action again"
-				/>
-			) : null}
-		</Card>
+			<View style={styles.rail} />
+			<View style={styles.body}>
+				<View style={styles.copyRow}>
+					<View
+						accessibilityElementsHidden
+						importantForAccessibility="no"
+					>
+						<CircleAlert
+							size={15}
+							color={colors.destructive}
+							strokeWidth={2}
+						/>
+					</View>
+					<Text style={styles.message}>{message}</Text>
+				</View>
+				{onRetry ? (
+					<PressableScale
+						onPress={onRetry}
+						style={styles.retry}
+						accessibilityRole="button"
+						accessibilityLabel={retryLabel}
+						accessibilityHint="Tries the failed action again"
+					>
+						<Text style={styles.retryLabel}>{retryLabel}</Text>
+					</PressableScale>
+				) : null}
+			</View>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	card: {
-		padding: 14,
+	wrap: {
+		flexDirection: 'row',
 		marginBottom: 14,
+		overflow: 'hidden',
+		borderRadius: radius.card,
+		borderCurve: 'continuous',
+		borderWidth: 1,
+		borderColor: colors.border,
+		backgroundColor: colors.card,
+	},
+	rail: {
+		width: 3,
+		backgroundColor: colors.destructive,
+		opacity: 0.75,
+	},
+	body: {
+		flex: 1,
+		paddingVertical: 12,
+		paddingHorizontal: 12,
 		gap: 10,
-		borderColor: 'rgba(239,68,68,0.35)',
-		backgroundColor: colors.destructiveSoft,
+	},
+	copyRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		gap: 8,
 	},
 	message: {
+		flex: 1,
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
-		color: colors.destructive,
+		color: colors.muted,
 		lineHeight: 18,
+	},
+	retry: {
+		alignSelf: 'flex-start',
+		minHeight: 32,
+		paddingHorizontal: 12,
+		paddingVertical: 6,
+		borderRadius: radius.button,
+		borderCurve: 'continuous',
+		backgroundColor: colors.primarySoft,
+		borderWidth: 1,
+		borderColor: 'rgba(59,130,246,0.28)',
+		justifyContent: 'center',
+	},
+	retryLabel: {
+		fontFamily: fontFamilies.sansSemibold,
+		fontSize: 12,
+		color: colors.primary,
 	},
 });

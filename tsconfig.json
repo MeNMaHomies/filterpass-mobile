@@ -4,9 +4,7 @@
 		"strict": true,
 		"paths": {
 			"@/*": ["./src/*"],
-			"@/assets/*": ["./assets/*"],
-			"moti/view": ["./node_modules/moti/build/components/view"],
-			"moti/core": ["./node_modules/moti/build/core/index"]
+			"@/assets/*": ["./assets/*"]
 		}
 	},
 	"include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
