@@ -1,5 +1,6 @@
 import {
 	formatAgo,
+	formatDaySectionLabel,
 	formatDuration,
 	formatDurationFromTimestamps,
 	formatSessionLabel,
@@ -47,5 +48,15 @@ describe('formatSessionLabel', () => {
 describe('shortSessionId', () => {
 	it('truncates long ids', () => {
 		expect(shortSessionId('abcdef1234567890')).toBe('abcdef12');
+	});
+});
+
+describe('formatDaySectionLabel', () => {
+	it('labels today and yesterday', () => {
+		const now = new Date(2026, 6, 16, 15, 0, 0).getTime(); // local Jul 16
+		const todayTs = new Date(2026, 6, 16, 9, 0, 0).getTime() / 1000;
+		const yesterdayTs = new Date(2026, 6, 15, 20, 0, 0).getTime() / 1000;
+		expect(formatDaySectionLabel(todayTs, now)).toBe('Today');
+		expect(formatDaySectionLabel(yesterdayTs, now)).toBe('Yesterday');
 	});
 });

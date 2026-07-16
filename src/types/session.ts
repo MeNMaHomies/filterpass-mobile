@@ -13,6 +13,8 @@ export type HistorySession = {
 	score: number;
 	duration: string;
 	ago: string;
+	/** Unix seconds used for day grouping (closed_at ?? created_at). */
+	sortTs: number;
 };
 
 export type ChunkTimelineItem = {

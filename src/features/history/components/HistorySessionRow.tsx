@@ -1,11 +1,11 @@
 import { memo, useCallback } from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Card, StatusBadge } from '@/components';
-import type { HistorySession } from '@/types';
+import { StatusBadge } from '@/components';
+import type { HistorySession, SessionLabel } from '@/types';
 import { shortSessionId } from '@/lib/formatSession';
 import { scoreColor } from '@/lib/scoreColor';
-import { colors } from '@/theme/tokens';
+import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type HistorySessionRowProps = {
@@ -16,6 +16,10 @@ type HistorySessionRowProps = {
 	duration: string;
 };
 
+function railColor(label: SessionLabel): string {
+	return label === 'SPOOF' ? colors.destructive : colors.accent;
+}
+
 export const HistorySessionRow = memo(function HistorySessionRow({
 	id,
 	label,
@@ -25,6 +29,9 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 }: HistorySessionRowProps) {
 	const router = useRouter();
 	const displayId = shortSessionId(id);
+	const color = scoreColor(score);
+	const fillPct = Math.round(Math.min(1, Math.max(0, score)) * 100);
+
 	const onPress = useCallback(() => {
 		router.push(`/history/${id}` as Href);
 	}, [router, id]);
@@ -37,20 +44,41 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 			accessibilityHint="Opens the session report"
 		>
 			{({ pressed }) => (
-				<Card style={[styles.row, pressed && styles.rowPressed]}>
-					<View style={styles.rowTop}>
-						<View>
-							<Text style={styles.sessionId}>{displayId}</Text>
-							<Text style={styles.meta}>
-								{ago} · {duration}
-							</Text>
+				<View
+					style={[
+						styles.row,
+						label === 'SPOOF' && styles.rowSpoof,
+						pressed && styles.rowPressed,
+					]}
+				>
+					<View
+						style={[styles.rail, { backgroundColor: railColor(label) }]}
+					/>
+					<View style={styles.body}>
+						<View style={styles.top}>
+							<View style={styles.scoreBlock}>
+								<Text style={[styles.score, { color }]}>
+									{score.toFixed(2)}
+								</Text>
+								<View style={styles.barTrack}>
+									<View
+										style={[
+											styles.barFill,
+											{
+												width: `${fillPct}%`,
+												backgroundColor: color,
+											},
+										]}
+									/>
+								</View>
+							</View>
+							<StatusBadge label={label} variant={label} />
 						</View>
-						<StatusBadge label={label} variant={label} />
+						<Text style={styles.meta}>
+							{displayId} · {ago} · {duration}
+						</Text>
 					</View>
-					<Text style={[styles.score, { color: scoreColor(score) }]}>
-						{score.toFixed(2)}
-					</Text>
-				</Card>
+				</View>
 			)}
 		</Pressable>
 	);
@@ -58,32 +86,62 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 
 const styles = StyleSheet.create({
 	row: {
-		paddingHorizontal: 14,
-		paddingVertical: 13,
+		flexDirection: 'row',
+		backgroundColor: colors.card,
+		borderWidth: 1,
+		borderColor: colors.border,
+		borderRadius: radius.card,
+		borderCurve: 'continuous',
+		overflow: 'hidden',
 		marginBottom: 8,
+		minHeight: 76,
+	},
+	rowSpoof: {
+		backgroundColor: colors.destructiveSoft,
+		borderColor: 'rgba(239,68,68,0.28)',
 	},
 	rowPressed: {
-		opacity: 0.85,
+		opacity: 0.9,
+		transform: [{ scale: 0.985 }],
 	},
-	rowTop: {
+	rail: {
+		width: 3,
+	},
+	body: {
+		flex: 1,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		gap: 8,
+	},
+	top: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'flex-start',
+		gap: 12,
 	},
-	sessionId: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 13,
-		color: colors.foreground,
-	},
-	meta: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		marginTop: 3,
+	scoreBlock: {
+		flex: 1,
+		gap: 6,
 	},
 	score: {
 		fontFamily: fontFamilies.monoSemibold,
-		fontSize: 20,
-		marginTop: 8,
+		fontSize: 24,
+		letterSpacing: -0.5,
+	},
+	barTrack: {
+		height: 3,
+		borderRadius: 99,
+		backgroundColor: colors.border,
+		overflow: 'hidden',
+		maxWidth: 120,
+	},
+	barFill: {
+		height: '100%',
+		borderRadius: 99,
+	},
+	meta: {
+		fontFamily: fontFamilies.mono,
+		fontSize: 11,
+		color: colors.muted2,
 	},
 });

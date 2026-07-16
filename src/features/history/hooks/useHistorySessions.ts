@@ -34,6 +34,7 @@ function mapSessionRow(
 		score: s.avg_session_score ?? 0,
 		duration: formatDurationFromTimestamps(s.created_at, s.closed_at),
 		ago: formatAgo(s.closed_at ?? s.created_at),
+		sortTs: s.closed_at ?? s.created_at,
 	};
 }
 
