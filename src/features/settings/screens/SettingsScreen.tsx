@@ -7,10 +7,16 @@ import {
 	StyleSheet,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Button, Card, Eyebrow, ScreenLoader } from '@/components';
+import {
+	Button,
+	Card,
+	ErrorBanner,
+	Eyebrow,
+	ScreenLoader,
+} from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { apiBaseUrl } from '@/config/env';
-import { hapticSuccess } from '@/lib/haptics';
+import { hapticError, hapticSuccess } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 import { ThresholdBand } from '../components/ThresholdBand';
@@ -44,6 +50,7 @@ export function SettingsScreen() {
 	);
 	const [loaded, setLoaded] = useState(false);
 	const [saved, setSaved] = useState(false);
+	const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadSessionDefaults().then((d) => {
@@ -85,17 +92,34 @@ export function SettingsScreen() {
 	}, [applyThresholds, defaults.spoof_threshold, spoofText]);
 
 	const handleSave = useCallback(async () => {
-		await saveSessionDefaults(defaults);
-		void hapticSuccess();
-		setSaved(true);
-		setTimeout(() => setSaved(false), 2000);
+		setPersistenceError(null);
+		try {
+			await saveSessionDefaults(defaults);
+			void hapticSuccess();
+			setSaved(true);
+			setTimeout(() => setSaved(false), 2000);
+		} catch {
+			void hapticError();
+			setSaved(false);
+			setPersistenceError(
+				'Could not save settings. Restart the app and try again.',
+			);
+		}
 	}, [defaults]);
 
 	const handleReset = useCallback(async () => {
-		const d = await resetSessionDefaults();
-		setDefaults(d);
-		setRealText(formatThreshold(d.real_threshold));
-		setSpoofText(formatThreshold(d.spoof_threshold));
+		setPersistenceError(null);
+		try {
+			const d = await resetSessionDefaults();
+			setDefaults(d);
+			setRealText(formatThreshold(d.real_threshold));
+			setSpoofText(formatThreshold(d.spoof_threshold));
+		} catch {
+			void hapticError();
+			setPersistenceError(
+				'Could not reset settings. Restart the app and try again.',
+			);
+		}
 	}, []);
 
 	if (!loaded) {
@@ -120,6 +144,10 @@ export function SettingsScreen() {
 					{apiBaseUrl}
 				</Text>
 			</Card>
+
+			{persistenceError ? (
+				<ErrorBanner message={persistenceError} />
+			) : null}
 
 			{saved ? (
 				<Text

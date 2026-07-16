@@ -36,44 +36,32 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
 	const [health, setHealth] = useState<HealthResponse | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
-	const refresh = useCallback(async () => {
+	const checkHealth = useCallback(async (): Promise<HealthResponse> => {
 		if (isOffline) {
-			setStatus('down');
-			setHealth(null);
-			setError(null);
-			return;
+			throw new ApiError('No internet connection', 0, null, null);
 		}
 
+		return assertBackendHealthy(await getHealth());
+	}, [isOffline]);
+
+	const refresh = useCallback(async () => {
 		setStatus('checking');
 		setError(null);
 		try {
-			const next = assertBackendHealthy(await getHealth());
+			const next = await checkHealth();
 			setHealth(next);
 			setStatus('ok');
 			setError(null);
 		} catch (e) {
 			setHealth(null);
 			setStatus('down');
-			setError(formatApiError(e));
+			setError(isOffline ? null : formatApiError(e));
 		}
-	}, [isOffline]);
+	}, [checkHealth, isOffline]);
 
 	const ensureReady = useCallback(async () => {
-		if (isOffline) {
-			const offlineError = new ApiError(
-				'No internet connection',
-				0,
-				null,
-				null,
-			);
-			setStatus('down');
-			setHealth(null);
-			setError(null);
-			throw offlineError;
-		}
-
 		try {
-			const next = assertBackendHealthy(await getHealth());
+			const next = await checkHealth();
 			setHealth(next);
 			setStatus('ok');
 			setError(null);
@@ -81,14 +69,33 @@ export function BackendHealthProvider({ children }: { children: ReactNode }) {
 		} catch (e) {
 			setHealth(null);
 			setStatus('down');
-			setError(formatApiError(e));
+			setError(isOffline ? null : formatApiError(e));
 			throw e;
 		}
-	}, [isOffline]);
+	}, [checkHealth, isOffline]);
 
 	useEffect(() => {
-		void refresh();
-	}, [refresh]);
+		let active = true;
+
+		void checkHealth().then(
+			(next) => {
+				if (!active) return;
+				setHealth(next);
+				setStatus('ok');
+				setError(null);
+			},
+			(e) => {
+				if (!active) return;
+				setHealth(null);
+				setStatus('down');
+				setError(isOffline ? null : formatApiError(e));
+			},
+		);
+
+		return () => {
+			active = false;
+		};
+	}, [checkHealth, isOffline]);
 
 	const value = useMemo(
 		() => ({ status, health, error, refresh, ensureReady }),
