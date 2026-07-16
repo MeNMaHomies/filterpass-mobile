@@ -1,7 +1,7 @@
 import { memo, useCallback } from 'react';
-import { Pressable, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { StatusBadge } from '@/components';
+import { MotiEnter, PressableScale, StatusBadge } from '@/components';
 import type { HistorySession, SessionLabel } from '@/types';
 import { shortSessionId } from '@/lib/formatSession';
 import { scoreColor } from '@/lib/scoreColor';
@@ -14,6 +14,7 @@ type HistorySessionRowProps = {
 	score: number;
 	ago: string;
 	duration: string;
+	index?: number;
 };
 
 function railColor(label: SessionLabel): string {
@@ -26,30 +27,28 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 	score,
 	ago,
 	duration,
+	index = 0,
 }: HistorySessionRowProps) {
 	const router = useRouter();
 	const displayId = shortSessionId(id);
 	const color = scoreColor(score);
-	const fillPct = Math.round(Math.min(1, Math.max(0, score)) * 100);
+	const fillPct = Math.min(1, Math.max(0, score));
 
 	const onPress = useCallback(() => {
 		router.push(`/history/${id}` as Href);
 	}, [router, id]);
 
 	return (
-		<Pressable
-			onPress={onPress}
-			accessibilityRole="button"
-			accessibilityLabel={`Session ${displayId}, ${label}, score ${score.toFixed(2)}, ${ago}`}
-			accessibilityHint="Opens the session report"
-		>
-			{({ pressed }) => (
+		<MotiEnter index={index}>
+			<PressableScale
+				onPress={onPress}
+				accessibilityRole="button"
+				accessibilityLabel={`Session ${displayId}, ${label}, score ${score.toFixed(2)}, ${ago}`}
+				accessibilityHint="Opens the session report"
+				scaleTo={0.985}
+			>
 				<View
-					style={[
-						styles.row,
-						label === 'SPOOF' && styles.rowSpoof,
-						pressed && styles.rowPressed,
-					]}
+					style={[styles.row, label === 'SPOOF' && styles.rowSpoof]}
 				>
 					<View
 						style={[styles.rail, { backgroundColor: railColor(label) }]}
@@ -65,7 +64,7 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 										style={[
 											styles.barFill,
 											{
-												width: `${fillPct}%`,
+												transform: [{ scaleX: fillPct }],
 												backgroundColor: color,
 											},
 										]}
@@ -79,8 +78,8 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 						</Text>
 					</View>
 				</View>
-			)}
-		</Pressable>
+			</PressableScale>
+		</MotiEnter>
 	);
 });
 
@@ -99,10 +98,6 @@ const styles = StyleSheet.create({
 	rowSpoof: {
 		backgroundColor: colors.destructiveSoft,
 		borderColor: 'rgba(239,68,68,0.28)',
-	},
-	rowPressed: {
-		opacity: 0.9,
-		transform: [{ scale: 0.985 }],
 	},
 	rail: {
 		width: 3,
@@ -137,7 +132,9 @@ const styles = StyleSheet.create({
 	},
 	barFill: {
 		height: '100%',
+		width: '100%',
 		borderRadius: 99,
+		transformOrigin: 'left center',
 	},
 	meta: {
 		fontFamily: fontFamilies.mono,

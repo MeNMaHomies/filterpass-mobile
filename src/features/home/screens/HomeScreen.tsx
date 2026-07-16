@@ -1,13 +1,12 @@
 import { useCallback } from 'react';
 import {
 	ScrollView,
-	View,
 	Text,
 	StyleSheet,
 	RefreshControl,
 } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Button, Card, EmptyState, ErrorBanner, Eyebrow } from '@/components';
+import { Button, Card, EmptyState, ErrorBanner, Eyebrow, MotiEnter } from '@/components';
 import { KpiGrid } from '../components/KpiGrid';
 import { RecentSessionCard } from '../components/RecentSessionCard';
 import { useHomeOverview } from '../hooks/useHomeOverview';
@@ -38,7 +37,7 @@ export function HomeScreen() {
 			showsVerticalScrollIndicator={false}
 			refreshControl={
 				<RefreshControl
-					refreshing={loading && kpis.length > 0}
+					refreshing={Boolean(loading && kpis.length > 0)}
 					onRefresh={refresh}
 					tintColor={colors.primary}
 				/>
@@ -53,45 +52,53 @@ export function HomeScreen() {
 
 			{error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
 
-			{kpis.length > 0 ? <KpiGrid items={kpis} /> : null}
+			{kpis.length > 0 ? (
+				<MotiEnter index={0}>
+					<KpiGrid items={kpis} />
+				</MotiEnter>
+			) : null}
 
-			<Card glow style={styles.ctaCard}>
-				<Eyebrow>Start session</Eyebrow>
-				<Text style={styles.ctaTitle}>Live spoof detection</Text>
-				<Text style={styles.ctaBody}>
-					Mic capture streams to the detector. No account required.
-				</Text>
-				<Button
-					variant="primary"
-					label="Start session"
-					style={styles.ctaButton}
-					onPress={openLive}
-				/>
-			</Card>
+			<MotiEnter index={1}>
+				<Card glow style={styles.ctaCard}>
+					<Eyebrow>Start session</Eyebrow>
+					<Text style={styles.ctaTitle}>Live spoof detection</Text>
+					<Text style={styles.ctaBody}>
+						Mic capture streams to the detector. No account required.
+					</Text>
+					<Button
+						variant="primary"
+						label="Start session"
+						style={styles.ctaButton}
+						onPress={openLive}
+					/>
+				</Card>
+			</MotiEnter>
 
-			<Eyebrow>Recent sessions</Eyebrow>
-			{recentSessions.length === 0 && !loading ? (
-				<EmptyState
-					title="No sessions yet"
-					description="Run a live detection to see recent results here."
-					actionLabel="Start session"
-					onAction={openLive}
-				/>
-			) : (
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={styles.recentRow}
-				>
-					{recentSessions.map((s) => (
-						<RecentSessionCard
-							key={s.sessionId}
-							session={s}
-							onPress={openSession}
-						/>
-					))}
-				</ScrollView>
-			)}
+			<MotiEnter index={2}>
+				<Eyebrow>Recent sessions</Eyebrow>
+				{recentSessions.length === 0 && !loading ? (
+					<EmptyState
+						title="No sessions yet"
+						description="Run a live detection to see recent results here."
+						actionLabel="Start session"
+						onAction={openLive}
+					/>
+				) : (
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.recentRow}
+					>
+						{recentSessions.map((s) => (
+							<RecentSessionCard
+								key={s.sessionId}
+								session={s}
+								onPress={openSession}
+							/>
+						))}
+					</ScrollView>
+				)}
+			</MotiEnter>
 		</ScrollView>
 	);
 }

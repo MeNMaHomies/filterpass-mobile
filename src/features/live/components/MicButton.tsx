@@ -1,5 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
+import { MotiView } from 'moti';
 import { Mic } from 'lucide-react-native';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
 import { colors } from '@/theme/tokens';
 
 type MicButtonProps = {
@@ -13,27 +16,46 @@ export function MicButton({
 	disabled = false,
 	busy = false,
 }: MicButtonProps) {
+	const reduceMotion = useReduceMotion();
 	const isDisabled = disabled || busy;
 
 	return (
-		<Pressable
+		<PressableScale
 			onPress={onPress}
 			disabled={isDisabled}
-			style={({ pressed }) => [
-				styles.button,
-				pressed && !isDisabled && styles.pressed,
-				isDisabled && styles.disabled,
-			]}
+			style={[styles.button, isDisabled && styles.disabled]}
 			accessibilityRole="button"
 			accessibilityLabel={busy ? 'Connecting' : 'Start listening'}
 			accessibilityState={{ disabled: isDisabled, busy }}
+			scaleTo={0.94}
+			haptic={!busy}
 		>
 			{busy ? (
 				<ActivityIndicator color={colors.primary} />
 			) : (
-				<Mic size={28} color={colors.primary} strokeWidth={1.75} />
+				<MotiView
+					from={reduceMotion ? undefined : { scale: 1 }}
+					animate={
+						reduceMotion
+							? { scale: 1 }
+							: {
+									scale: [1, 1.06, 1],
+								}
+					}
+					transition={
+						reduceMotion
+							? undefined
+							: {
+									type: 'timing',
+									duration: 2200,
+									loop: true,
+								}
+					}
+				>
+					<Mic size={28} color={colors.primary} strokeWidth={1.75} />
+				</MotiView>
 			)}
-		</Pressable>
+		</PressableScale>
 	);
 }
 
@@ -47,10 +69,6 @@ const styles = StyleSheet.create({
 		borderColor: colors.primary,
 		alignItems: 'center',
 		justifyContent: 'center',
-	},
-	pressed: {
-		opacity: 0.85,
-		transform: [{ scale: 0.97 }],
 	},
 	disabled: {
 		opacity: 0.5,

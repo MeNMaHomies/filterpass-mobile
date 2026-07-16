@@ -92,25 +92,29 @@ export function HistoryScreen() {
 		[listItems],
 	);
 
-	const renderItem = useCallback(({ item }: { item: ListItem }) => {
-		if (item.kind === 'header') {
+	const renderItem = useCallback(
+		({ item, index }: { item: ListItem; index: number }) => {
+			if (item.kind === 'header') {
+				return (
+					<View style={styles.sectionHeader}>
+						<Text style={styles.sectionTitle}>{item.title}</Text>
+					</View>
+				);
+			}
+			const s = item.session;
 			return (
-				<View style={styles.sectionHeader}>
-					<Text style={styles.sectionTitle}>{item.title}</Text>
-				</View>
+				<HistorySessionRow
+					id={s.id}
+					label={s.label}
+					score={s.score}
+					ago={s.ago}
+					duration={s.duration}
+					index={index}
+				/>
 			);
-		}
-		const s = item.session;
-		return (
-			<HistorySessionRow
-				id={s.id}
-				label={s.label}
-				score={s.score}
-				ago={s.ago}
-				duration={s.duration}
-			/>
-		);
-	}, []);
+		},
+		[],
+	);
 
 	const keyExtractor = useCallback((item: ListItem) => item.key, []);
 

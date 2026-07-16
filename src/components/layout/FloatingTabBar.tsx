@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
-import { View, Pressable, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
+import { MotiView } from 'moti';
 import { Home, Mic, History, Settings } from 'lucide-react-native';
-import { hapticLight } from '@/lib/haptics';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -28,7 +29,6 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 
 	const navigateTo = useCallback(
 		(route: TabRoute, isFocused: boolean) => {
-			void hapticLight();
 			const event = navigation.emit({
 				type: 'tabPress',
 				target: route.key,
@@ -56,24 +56,29 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 					const label = TAB_LABELS[route.name] ?? route.name;
 
 					return (
-						<Pressable
+						<PressableScale
 							key={route.key}
 							onPress={() => navigateTo(route, isFocused)}
-							style={({ pressed }) => [
-								styles.tab,
-								isFocused ? styles.tabActive : null,
-								pressed && styles.tabPressed,
-							]}
+							style={[styles.tab, isFocused ? styles.tabActive : null]}
 							hitSlop={4}
 							accessibilityRole="button"
 							accessibilityState={isFocused ? { selected: true } : {}}
 							accessibilityLabel={label}
+							scaleTo={0.94}
 						>
-							<Icon
-								size={20}
-								color={isFocused ? colors.primary : colors.muted2}
-								strokeWidth={1.75}
-							/>
+							<MotiView
+								animate={{
+									scale: isFocused ? 1.08 : 1,
+									opacity: isFocused ? 1 : 0.72,
+								}}
+								transition={{ type: 'spring', damping: 16, stiffness: 280 }}
+							>
+								<Icon
+									size={20}
+									color={isFocused ? colors.primary : colors.muted2}
+									strokeWidth={1.75}
+								/>
+							</MotiView>
 							<Text
 								style={[
 									styles.tabLabel,
@@ -85,7 +90,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 							{route.name === 'live' && isFocused ? (
 								<View style={styles.liveIndicator} />
 							) : null}
-						</Pressable>
+						</PressableScale>
 					);
 				})}
 			</View>
@@ -124,9 +129,6 @@ const styles = StyleSheet.create({
 	},
 	tabActive: {
 		backgroundColor: colors.tabActive,
-	},
-	tabPressed: {
-		opacity: 0.75,
 	},
 	tabLabel: {
 		fontFamily: fontFamilies.sansMedium,

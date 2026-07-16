@@ -1,5 +1,4 @@
 import {
-	Pressable,
 	Text,
 	StyleSheet,
 	type PressableProps,
@@ -7,6 +6,7 @@ import {
 	type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -30,13 +30,8 @@ export function Button({
 
 	if (variant === 'primary') {
 		return (
-			<Pressable
-				style={({ pressed }) => [
-					styles.primaryOuter,
-					pressed && styles.pressed,
-					disabled && styles.disabled,
-					style,
-				]}
+			<PressableScale
+				style={[styles.primaryOuter, disabled && styles.disabled, style]}
 				disabled={disabled}
 				accessibilityRole="button"
 				accessibilityLabel={a11yLabel}
@@ -51,7 +46,7 @@ export function Button({
 				>
 					<Text style={styles.primaryLabel}>{label}</Text>
 				</LinearGradient>
-			</Pressable>
+			</PressableScale>
 		);
 	}
 
@@ -63,11 +58,10 @@ export function Button({
 				: styles.ghost;
 
 	return (
-		<Pressable
-			style={({ pressed }) => [
+		<PressableScale
+			style={[
 				styles.base,
 				variantStyle,
-				pressed && styles.pressed,
 				disabled && styles.disabled,
 				style,
 			]}
@@ -87,7 +81,7 @@ export function Button({
 			>
 				{label}
 			</Text>
-		</Pressable>
+		</PressableScale>
 	);
 }
 
@@ -151,6 +145,5 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.sansMedium,
 		fontWeight: '500',
 	},
-	pressed: { opacity: 0.85 },
 	disabled: { opacity: 0.4 },
 });

@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -44,15 +45,17 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
-				<StatusBar style="light" />
-				<Stack
-					screenOptions={{
-						headerShown: false,
-						contentStyle: { backgroundColor: colors.background },
-					}}
-				>
-					<Stack.Screen name="(tabs)" />
-				</Stack>
+				<BottomSheetModalProvider>
+					<StatusBar style="light" />
+					<Stack
+						screenOptions={{
+							headerShown: false,
+							contentStyle: { backgroundColor: colors.background },
+						}}
+					>
+						<Stack.Screen name="(tabs)" />
+					</Stack>
+				</BottomSheetModalProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);

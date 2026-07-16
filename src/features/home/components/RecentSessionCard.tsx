@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
-import { Card, StatusBadge } from '@/components';
+import { Text, StyleSheet } from 'react-native';
+import { Card, PressableScale, StatusBadge } from '@/components';
 import type { RecentSession } from '@/types';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors } from '@/theme/tokens';
@@ -20,10 +20,11 @@ export const RecentSessionCard = memo(function RecentSessionCard({
 	}, [onPress, session.sessionId]);
 
 	return (
-		<Pressable
+		<PressableScale
 			onPress={handlePress}
 			accessibilityRole="button"
 			accessibilityLabel={`Open session ${session.id}, score ${session.score.toFixed(2)}, ${session.label}`}
+			scaleTo={0.97}
 		>
 			<Card style={styles.recentCard}>
 				<Text style={styles.recentId}>{session.id}</Text>
@@ -34,7 +35,7 @@ export const RecentSessionCard = memo(function RecentSessionCard({
 				</Text>
 				<StatusBadge label={session.label} variant={session.label} />
 			</Card>
-		</Pressable>
+		</PressableScale>
 	);
 });
 

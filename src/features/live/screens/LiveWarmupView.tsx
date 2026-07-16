@@ -34,14 +34,14 @@ export function LiveWarmupView({
 					Math.round((bufferFillSamples / bufferTargetSamples) * 100),
 				)
 			: 0;
-	const fillProgress = useSharedValue(fill);
+	const fillProgress = useSharedValue(fill / 100);
 
 	useEffect(() => {
-		fillProgress.set(withTiming(fill, { duration: 220 }));
+		fillProgress.set(withTiming(fill / 100, { duration: 220 }));
 	}, [fill, fillProgress]);
 
 	const fillStyle = useAnimatedStyle(() => ({
-		width: `${fillProgress.get()}%`,
+		transform: [{ scaleX: Math.max(0.001, fillProgress.get()) }],
 	}));
 
 	return (
@@ -132,8 +132,10 @@ const styles = StyleSheet.create({
 	},
 	fill: {
 		height: '100%',
+		width: '100%',
 		backgroundColor: colors.amber,
 		borderRadius: 99,
+		transformOrigin: 'left center',
 	},
 	progressMeta: {
 		fontFamily: fontFamilies.mono,
