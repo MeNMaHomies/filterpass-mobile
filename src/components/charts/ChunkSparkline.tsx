@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '@/theme/tokens';
 
@@ -6,17 +7,51 @@ type ChunkSparklineProps = {
 	height?: number;
 };
 
-export function ChunkSparkline({ chunks, height = 48 }: ChunkSparklineProps) {
-	const w = 300;
+function clampScore(score: number): number {
+	if (!Number.isFinite(score)) return 0;
+	return Math.min(1, Math.max(0, score));
+}
+
+function buildSparklinePaths(
+	chunks: number[],
+	width: number,
+	height: number,
+): { line: string; area: string } | null {
+	const values = chunks.map(clampScore);
+	if (values.length === 0) return null;
+
 	const pad = 4;
-	const points = chunks
-		.map((s, i) => {
-			const x = pad + (i / (chunks.length - 1)) * (w - pad * 2);
-			const y = pad + (1 - s) * (height - pad * 2);
+	const innerW = width - pad * 2;
+	const innerH = height - pad * 2;
+
+	const toY = (score: number) => pad + (1 - score) * innerH;
+
+	if (values.length === 1) {
+		const y = toY(values[0]);
+		const line = `M ${pad} ${y} L ${width - pad} ${y}`;
+		const area = `${line} L ${width - pad} ${height} L ${pad} ${height} Z`;
+		return { line, area };
+	}
+
+	const line = values
+		.map((score, i) => {
+			const x = pad + (i / (values.length - 1)) * innerW;
+			const y = toY(score);
 			return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
 		})
 		.join(' ');
-	const area = `${points} L ${w - pad} ${height} L ${pad} ${height} Z`;
+
+	const area = `${line} L ${width - pad} ${height} L ${pad} ${height} Z`;
+	return { line, area };
+}
+
+export const ChunkSparkline = memo(function ChunkSparkline({
+	chunks,
+	height = 48,
+}: ChunkSparklineProps) {
+	const w = 300;
+	const paths = buildSparklinePaths(chunks, w, height);
+	if (!paths) return null;
 
 	return (
 		<Svg
@@ -35,8 +70,13 @@ export function ChunkSparkline({ chunks, height = 48 }: ChunkSparklineProps) {
 					<Stop offset="100%" stopColor={colors.primary} stopOpacity={0} />
 				</LinearGradient>
 			</Defs>
-			<Path d={area} fill="url(#chunkArea)" />
-			<Path d={points} fill="none" stroke={colors.primary} strokeWidth={2} />
+			<Path d={paths.area} fill="url(#chunkArea)" />
+			<Path
+				d={paths.line}
+				fill="none"
+				stroke={colors.primary}
+				strokeWidth={2}
+			/>
 		</Svg>
 	);
-}
+});

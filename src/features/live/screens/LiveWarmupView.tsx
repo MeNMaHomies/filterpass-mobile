@@ -1,18 +1,37 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
 import { Square } from 'lucide-react-native';
 import { Card, Eyebrow, StatusBadge } from '@/components';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type LiveWarmupViewProps = {
+	bufferFillSamples?: number;
+	bufferTargetSamples?: number;
 	onCancel?: () => void;
 };
 
-export function LiveWarmupView({ onCancel }: LiveWarmupViewProps) {
-	const fill = 68;
+export function LiveWarmupView({
+	bufferFillSamples = 0,
+	bufferTargetSamples = 1,
+	onCancel,
+}: LiveWarmupViewProps) {
+	const scrollProps = useScrollScreenProps();
+	const fill =
+		bufferTargetSamples > 0
+			? Math.min(
+					100,
+					Math.round((bufferFillSamples / bufferTargetSamples) * 100),
+				)
+			: 0;
 
 	return (
-		<View style={styles.root}>
+		<ScrollView
+			contentContainerStyle={styles.scroll}
+			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
+			{...scrollProps}
+		>
 			<StatusBadge label="Warming up" variant="WARMUP" />
 
 			<View style={styles.progressBlock}>
@@ -20,7 +39,10 @@ export function LiveWarmupView({ onCancel }: LiveWarmupViewProps) {
 				<View style={styles.track}>
 					<View style={[styles.fill, { width: `${fill}%` }]} />
 				</View>
-				<Text style={styles.progressMeta}>6,800 / 10,000 samples</Text>
+				<Text style={styles.progressMeta}>
+					{bufferFillSamples.toLocaleString()} /{' '}
+					{bufferTargetSamples.toLocaleString()} samples
+				</Text>
 			</View>
 
 			<Card style={styles.infoCard}>
@@ -41,16 +63,14 @@ export function LiveWarmupView({ onCancel }: LiveWarmupViewProps) {
 				</Pressable>
 				<Text style={styles.cancelLabel}>Cancel</Text>
 			</View>
-		</View>
+		</ScrollView>
 	);
 }
 
 const styles = StyleSheet.create({
-	root: {
-		flex: 1,
+	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 24,
-		paddingBottom: spacing.contentBottom,
 		alignItems: 'center',
 	},
 	progressBlock: {
@@ -83,7 +103,7 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	infoCard: {
-		marginTop: 32,
+		marginTop: 28,
 		padding: 16,
 		width: '100%',
 	},
@@ -95,14 +115,13 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 	},
 	cancelBlock: {
-		marginTop: 'auto',
-		paddingTop: 28,
+		marginTop: 36,
 		alignItems: 'center',
 	},
 	cancelButton: {
-		width: 72,
-		height: 72,
-		borderRadius: 36,
+		width: 64,
+		height: 64,
+		borderRadius: 32,
 		backgroundColor: colors.destructiveSoft,
 		borderWidth: 2,
 		borderColor: colors.destructive,

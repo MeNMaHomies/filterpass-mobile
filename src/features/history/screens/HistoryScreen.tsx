@@ -1,68 +1,131 @@
+import { useCallback, useMemo, useState } from 'react';
 import {
-	ScrollView,
 	View,
 	Text,
 	TextInput,
 	Pressable,
 	StyleSheet,
+	ActivityIndicator,
+	RefreshControl,
 } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import { RefreshCw } from 'lucide-react-native';
-import { Card, StatusBadge } from '@/components';
-import { historySessions } from '@/mocks/sessions';
-import { scoreColor } from '@/lib/scoreColor';
+import { HistorySessionRow } from '../components/HistorySessionRow';
+import { useHistorySessions } from '../hooks/useHistorySessions';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
+import type { HistorySession } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 export function HistoryScreen() {
-	const router = useRouter();
+	const scrollProps = useScrollScreenProps();
+	const {
+		sessions,
+		loading,
+		refreshing,
+		loadingMore,
+		error,
+		refresh,
+		loadMore,
+	} = useHistorySessions();
+	const [query, setQuery] = useState('');
+
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return sessions;
+		return sessions.filter((s) => s.id.toLowerCase().includes(q));
+	}, [sessions, query]);
+
+	const renderItem = useCallback(
+		({ item }: { item: HistorySession }) => (
+			<HistorySessionRow
+				id={item.id}
+				label={item.label}
+				score={item.score}
+				ago={item.ago}
+				duration={item.duration}
+			/>
+		),
+		[],
+	);
+
+	const keyExtractor = useCallback((item: HistorySession) => item.id, []);
+
+	const listHeader = useMemo(
+		() => (
+			<View style={styles.header}>
+				<View style={styles.searchRow}>
+					<TextInput
+						placeholder="Search session id…"
+						placeholderTextColor={colors.muted2}
+						style={styles.search}
+						value={query}
+						onChangeText={setQuery}
+					/>
+					<Pressable style={styles.refreshBtn} onPress={refresh}>
+						<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
+					</Pressable>
+				</View>
+
+				{loading && sessions.length === 0 ? (
+					<ActivityIndicator color={colors.primary} />
+				) : null}
+
+				{error ? <Text style={styles.error}>{error}</Text> : null}
+
+				{!loading && filtered.length === 0 ? (
+					<Text style={styles.empty}>No sessions found</Text>
+				) : null}
+			</View>
+		),
+		[query, loading, sessions.length, error, filtered.length, refresh],
+	);
+
+	const listFooter = useMemo(() => {
+		if (!loadingMore) return null;
+		return (
+			<ActivityIndicator
+				color={colors.primary}
+				style={styles.footerLoader}
+			/>
+		);
+	}, [loadingMore]);
 
 	return (
-		<ScrollView
-			contentContainerStyle={styles.scroll}
-			showsVerticalScrollIndicator={false}
-		>
-			<View style={styles.searchRow}>
-				<TextInput
-					placeholder="Search session id…"
-					placeholderTextColor={colors.muted2}
-					style={styles.search}
-				/>
-				<Pressable style={styles.refreshBtn}>
-					<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
-				</Pressable>
-			</View>
-
-			{historySessions.map((s) => (
-				<Pressable
-					key={s.id}
-					onPress={() => router.push(`/history/${s.id}` as Href)}
-				>
-					<Card style={styles.row}>
-						<View style={styles.rowTop}>
-							<View>
-								<Text style={styles.sessionId}>{s.id}</Text>
-								<Text style={styles.meta}>
-									{s.ago} · {s.duration}
-								</Text>
-							</View>
-							<StatusBadge label={s.label} variant={s.label} />
-						</View>
-						<Text style={[styles.score, { color: scoreColor(s.score) }]}>
-							{s.score.toFixed(2)}
-						</Text>
-					</Card>
-				</Pressable>
-			))}
-		</ScrollView>
+		<View style={styles.list}>
+			<FlashList
+				data={filtered}
+				renderItem={renderItem}
+				keyExtractor={keyExtractor}
+				ListHeaderComponent={listHeader}
+				ListFooterComponent={listFooter}
+				onEndReached={query.trim() ? undefined : loadMore}
+				onEndReachedThreshold={0.4}
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={styles.listContent}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={refresh}
+						tintColor={colors.primary}
+					/>
+				}
+				{...scrollProps}
+			/>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	scroll: {
+	list: {
+		flex: 1,
+	},
+	listContent: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
+	},
+	header: {
+		marginBottom: 4,
 	},
 	searchRow: {
 		flexDirection: 'row',
@@ -75,6 +138,7 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: colors.border,
 		borderRadius: 12,
+		borderCurve: 'continuous',
 		paddingHorizontal: 14,
 		paddingVertical: 11,
 		color: colors.foreground,
@@ -85,36 +149,26 @@ const styles = StyleSheet.create({
 		width: 44,
 		height: 44,
 		borderRadius: 10,
+		borderCurve: 'continuous',
 		backgroundColor: 'rgba(255,255,255,0.03)',
 		borderWidth: 1,
 		borderColor: colors.border,
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	row: {
-		paddingHorizontal: 14,
-		paddingVertical: 13,
+	error: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.destructive,
+		marginBottom: 12,
+	},
+	empty: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
 		marginBottom: 8,
 	},
-	rowTop: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'flex-start',
-	},
-	sessionId: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 13,
-		color: colors.foreground,
-	},
-	meta: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		marginTop: 3,
-	},
-	score: {
-		fontFamily: fontFamilies.monoSemibold,
-		fontSize: 20,
-		marginTop: 8,
+	footerLoader: {
+		marginVertical: 16,
 	},
 });

@@ -1,22 +1,49 @@
-import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import { useCallback } from 'react';
+import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Button, Card, Eyebrow, StatusBadge } from '@/components';
+import { Button, Card, Eyebrow } from '@/components';
 import { KpiGrid } from '../components/KpiGrid';
-import { homeKpis } from '@/mocks/kpis';
-import { recentSessions } from '@/mocks/sessions';
-import { scoreColor } from '@/lib/scoreColor';
+import { RecentSessionCard } from '../components/RecentSessionCard';
+import { useHomeOverview } from '../hooks/useHomeOverview';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 export function HomeScreen() {
 	const router = useRouter();
+	const scrollProps = useScrollScreenProps();
+	const { kpis, recentSessions, loading, error, refresh } = useHomeOverview();
+	const { push } = router;
+
+	const openLive = useCallback(() => {
+		push('/live' as Href);
+	}, [push]);
+
+	const openSession = useCallback(
+		(sessionId: string) => {
+			push(`/history/${sessionId}` as Href);
+		},
+		[push],
+	);
 
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			{...scrollProps}
 		>
-			<KpiGrid items={homeKpis} />
+			{loading && kpis.length === 0 ? (
+				<ActivityIndicator color={colors.primary} style={styles.loader} />
+			) : null}
+
+			{error ? (
+				<Card style={styles.errorCard}>
+					<Text style={styles.errorText}>{error}</Text>
+					<Button variant="ghost" label="Retry" onPress={refresh} />
+				</Card>
+			) : null}
+
+			{kpis.length > 0 ? <KpiGrid items={kpis} /> : null}
 
 			<Card glow style={styles.ctaCard}>
 				<Eyebrow>Start session</Eyebrow>
@@ -28,36 +55,24 @@ export function HomeScreen() {
 					variant="primary"
 					label="Start session"
 					style={styles.ctaButton}
-					onPress={() => router.push('/live' as Href)}
+					onPress={openLive}
 				/>
 			</Card>
 
 			<Eyebrow>Recent sessions</Eyebrow>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				contentContainerStyle={styles.recentRow}
-			>
-				{recentSessions.map((s) => (
-					<Pressable
-						key={s.id}
-						onPress={() => router.push('/history/a3f9c2e1' as Href)}
-					>
-						<Card style={styles.recentCard}>
-							<Text style={styles.recentId}>{s.id}</Text>
-							<Text
-								style={[
-									styles.recentScore,
-									{ color: scoreColor(s.score) },
-								]}
-							>
-								{s.score.toFixed(2)}
-							</Text>
-							<StatusBadge label={s.label} variant={s.label} />
-						</Card>
-					</Pressable>
-				))}
-			</ScrollView>
+			{recentSessions.length === 0 && !loading ? (
+				<Text style={styles.empty}>No sessions yet</Text>
+			) : (
+				<View style={styles.recentRow}>
+					{recentSessions.map((s) => (
+						<RecentSessionCard
+							key={s.sessionId}
+							session={s}
+							onPress={openSession}
+						/>
+					))}
+				</View>
+			)}
 		</ScrollView>
 	);
 }
@@ -66,7 +81,19 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: spacing.screenY,
-		paddingBottom: spacing.contentBottom,
+	},
+	loader: {
+		marginBottom: 14,
+	},
+	errorCard: {
+		padding: 14,
+		marginBottom: 14,
+		gap: 10,
+	},
+	errorText: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.destructive,
 	},
 	ctaCard: {
 		padding: 16,
@@ -90,24 +117,16 @@ const styles = StyleSheet.create({
 		width: '100%',
 		height: 40,
 	},
+	empty: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
+		paddingTop: 10,
+	},
 	recentRow: {
+		flexDirection: 'row',
 		gap: 10,
 		paddingTop: 10,
 		paddingBottom: 4,
-	},
-	recentCard: {
-		minWidth: 128,
-		padding: 12,
-	},
-	recentId: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 10,
-		color: colors.muted2,
-		marginBottom: 8,
-	},
-	recentScore: {
-		fontFamily: fontFamilies.monoSemibold,
-		fontSize: 20,
-		marginBottom: 8,
 	},
 });

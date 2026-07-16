@@ -17,19 +17,21 @@ export function LiveDot({ color = colors.accent }: LiveDotProps) {
 	const opacity = useSharedValue(1);
 
 	useEffect(() => {
-		opacity.value = withRepeat(
-			withSequence(
-				withTiming(0.5, { duration: 800 }),
-				withTiming(1, { duration: 800 }),
+		opacity.set(
+			withRepeat(
+				withSequence(
+					withTiming(0.5, { duration: 800 }),
+					withTiming(1, { duration: 800 }),
+				),
+				-1,
+				false,
 			),
-			-1,
-			false,
 		);
 	}, [opacity]);
 
 	const animatedStyle = useAnimatedStyle(() => ({
-		opacity: opacity.value,
-		transform: [{ scale: opacity.value * 0.08 + 0.92 }],
+		opacity: opacity.get(),
+		transform: [{ scale: opacity.get() * 0.08 + 0.92 }],
 	}));
 
 	return (
@@ -44,5 +46,6 @@ const styles = StyleSheet.create({
 		width: 6,
 		height: 6,
 		borderRadius: 3,
+		borderCurve: 'continuous',
 	},
 });

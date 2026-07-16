@@ -5,7 +5,7 @@
 ## Expo & React Native
 
 - Target **Expo SDK 57** (`expo ~57.0.6`). Read versioned docs before writing code: https://docs.expo.dev/versions/v57.0.0/
-- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/` (`ui/`, `layout/`, `charts/`). Feature code in `src/features/<name>/` (`screens/`, `components/`). Domain types in `src/types/`, mock data in `src/mocks/`.
+- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/` (`ui/`, `layout/`, `charts/`). Feature code in `src/features/<name>/` (`screens/`, `components/`). Domain types in `src/types/`.
 - Theme tokens: `src/theme/tokens.ts`, typography: `src/theme/typography.ts`.
 - Prefer existing components (`AppShell`, `Card`, `Button`, etc.) over one-off markup.
 - Avoid native modules that crash in **Expo Go** unless verified (e.g. `@shopify/react-native-skia` with layer blur caused SIGSEGV — use `expo-linear-gradient` or a dev build instead).
@@ -17,7 +17,14 @@
 
 Use it for all REST and WebSocket contracts (sessions, `/ws/frames`, `/ws/output`, message shapes, errors, defaults). Do not guess endpoint fields or payload formats — read the doc first.
 
-When wiring real API calls, align mobile types and mock data in `src/mocks/` with the shapes documented there.
+### Client layout
+
+- `src/api/` — HTTP client (`client.ts`), REST modules (`health`, `sessions`, `history`), WebSocket helpers (`ws/frames`, `ws/output`).
+- `src/types/api.ts` — wire types mirroring `docs/api.md`.
+- `src/config/env.ts` — `EXPO_PUBLIC_API_URL` (default `http://localhost:8000`) and derived `apiWsBaseUrl`.
+- Feature hooks call `@/api`; screens do not call `fetch` directly.
+
+**Env:** copy `.env.example` to `.env`. Android emulator may need `http://10.0.2.2:8000`; physical devices need your machine's LAN IP.
 
 ## Git commits
 

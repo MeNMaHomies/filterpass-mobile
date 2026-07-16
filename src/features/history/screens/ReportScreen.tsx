@@ -1,4 +1,11 @@
-import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { useMemo } from 'react';
+import {
+	ScrollView,
+	View,
+	Text,
+	StyleSheet,
+	ActivityIndicator,
+} from 'react-native';
 import Svg, {
 	Path,
 	Line,
@@ -9,27 +16,104 @@ import Svg, {
 	Stop,
 } from 'react-native-svg';
 import { Card, Eyebrow, StatusBadge } from '@/components';
-import { reportChunks } from '@/mocks/sessions';
+import { useSessionReport } from '../hooks/useSessionReport';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
+import type { SessionLabel } from '@/types';
 
 type ReportScreenProps = {
 	sessionId?: string;
 };
 
+function buildScorePath(
+	scores: number[],
+	width: number,
+	height: number,
+): string {
+	if (scores.length === 0) return '';
+	const step = width / Math.max(scores.length - 1, 1);
+	const points = scores.map((score, i) => {
+		const safe = Number.isFinite(score)
+			? Math.min(1, Math.max(0, score))
+			: 0;
+		const x = i * step;
+		const y = height - safe * height;
+		return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+	});
+	return points.join(' ');
+}
+
 export function ReportScreen({ sessionId }: ReportScreenProps) {
+	const scrollProps = useScrollScreenProps();
+	const { duration, label, chunkCount, timeline, inferences, loading, error } =
+		useSessionReport(sessionId);
+
+	const scores = useMemo(
+		() => inferences.map((e) => e.session_score),
+		[inferences],
+	);
+
+	const linePath = useMemo(
+		() => buildScorePath(scores, 320, 80),
+		[scores],
+	);
+
+	const areaPath = useMemo(() => {
+		if (!linePath) return '';
+		return `${linePath} L320,100 L0,100 Z`;
+	}, [linePath]);
+
+	const realStats = useMemo(() => {
+		const realCount = timeline.filter((c) => c.label === 'REAL').length;
+		const realPct =
+			timeline.length > 0
+				? Math.round((realCount / timeline.length) * 100)
+				: 0;
+		return { realCount, realPct };
+	}, [timeline]);
+
+	const rtfBuckets = useMemo(() => {
+		if (inferences.length === 0) return [0, 0, 0, 0, 0, 0];
+		const max = Math.max(...inferences.map((e) => e.rtf), 0.01);
+		const bins = [0, 0, 0, 0, 0, 0];
+		for (const e of inferences) {
+			const idx = Math.min(5, Math.floor((e.rtf / max) * 6));
+			bins[idx] += 1;
+		}
+		const peak = Math.max(...bins, 1);
+		return bins.map((n) => Math.round((n / peak) * 45));
+	}, [inferences]);
+
+	if (loading) {
+		return (
+			<ActivityIndicator
+				color={colors.primary}
+				style={styles.loader}
+			/>
+		);
+	}
+
+	if (error) {
+		return <Text style={styles.error}>{error}</Text>;
+	}
+
+	const labelDisplay = label === '—' ? '—' : label;
+	const labelColor = label === 'SPOOF' ? colors.destructive : colors.accent;
+
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			{...scrollProps}
 		>
 			<Card style={styles.summaryCard}>
 				<View style={styles.summaryGrid}>
 					{[
-						['Duration', '4m 12s', colors.foreground],
-						['Chunks', '248', colors.foreground],
-						['Label', 'REAL', colors.accent],
+						['Duration', duration, colors.foreground],
+						['Chunks', String(chunkCount), colors.foreground],
+						['Label', labelDisplay, labelColor],
 					].map(([k, v, c], i) => (
 						<View
 							key={k}
@@ -48,53 +132,58 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 
 			<Card style={styles.section}>
 				<Eyebrow>Score over time</Eyebrow>
-				<Svg
-					width="100%"
-					height={100}
-					viewBox="0 0 320 100"
-					style={styles.chart}
-				>
-					<Defs>
-						<LinearGradient id="scoreArea" x1="0" y1="0" x2="0" y2="1">
-							<Stop
-								offset="0%"
-								stopColor={colors.accent}
-								stopOpacity={0.28}
+				{scores.length > 0 ? (
+					<Svg
+						width="100%"
+						height={100}
+						viewBox="0 0 320 100"
+						style={styles.chart}
+					>
+						<Defs>
+							<LinearGradient id="scoreArea" x1="0" y1="0" x2="0" y2="1">
+								<Stop
+									offset="0%"
+									stopColor={colors.accent}
+									stopOpacity={0.28}
+								/>
+								<Stop
+									offset="100%"
+									stopColor={colors.accent}
+									stopOpacity={0}
+								/>
+							</LinearGradient>
+						</Defs>
+						<Line
+							x1={0}
+							y1={50}
+							x2={320}
+							y2={50}
+							stroke={colors.muted2}
+							strokeDasharray="4 4"
+							opacity={0.4}
+						/>
+						{areaPath ? (
+							<Path d={areaPath} fill="url(#scoreArea)" />
+						) : null}
+						{linePath ? (
+							<Path
+								d={linePath}
+								fill="none"
+								stroke={colors.accent}
+								strokeWidth={2.5}
 							/>
-							<Stop
-								offset="100%"
-								stopColor={colors.accent}
-								stopOpacity={0}
-							/>
-						</LinearGradient>
-					</Defs>
-					<Line
-						x1={0}
-						y1={50}
-						x2={320}
-						y2={50}
-						stroke={colors.muted2}
-						strokeDasharray="4 4"
-						opacity={0.4}
-					/>
-					<Path
-						d="M0,70 L40,65 L80,58 L120,52 L160,48 L200,45 L240,42 L280,40 L320,38 L320,100 L0,100 Z"
-						fill="url(#scoreArea)"
-					/>
-					<Path
-						d="M0,70 L40,65 L80,58 L120,52 L160,48 L200,45 L240,42 L280,40 L320,38"
-						fill="none"
-						stroke={colors.accent}
-						strokeWidth={2.5}
-					/>
-				</Svg>
+						) : null}
+					</Svg>
+				) : (
+					<Text style={styles.noData}>No inference data</Text>
+				)}
 			</Card>
 
 			<View style={styles.chartsRow}>
 				<Card style={styles.histCard}>
 					<Eyebrow>RTF dist.</Eyebrow>
 					<Svg width="100%" height={60} viewBox="0 0 120 60">
-						{[12, 28, 45, 32, 18, 8].map((h, i) => (
+						{rtfBuckets.map((h, i) => (
 							<Rect
 								key={i}
 								x={i * 18 + 4}
@@ -126,37 +215,44 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 							fill="none"
 							stroke={colors.accent}
 							strokeWidth={8}
-							strokeDasharray="120 151"
+							strokeDasharray={`${(realStats.realPct / 100) * 151} 151`}
 							rotation={-90}
 							origin="40, 30"
 						/>
 					</Svg>
-					<Text style={styles.donutMeta}>79% real</Text>
+					<Text style={styles.donutMeta}>{realStats.realPct}% real</Text>
 				</Card>
 			</View>
 
 			<Eyebrow>Chunk timeline</Eyebrow>
 			<Card style={styles.timeline}>
-				{reportChunks.map((c, i) => (
-					<View
-						key={c.time}
-						style={[
-							styles.timelineRow,
-							i < reportChunks.length - 1 && styles.timelineBorder,
-						]}
-					>
-						<Text style={styles.timelineTime}>{c.time}</Text>
-						<Text
+				{timeline.length === 0 ? (
+					<Text style={styles.noData}>No chunks recorded</Text>
+				) : (
+					timeline.map((c, i) => (
+						<View
+							key={`${c.time}-${i}`}
 							style={[
-								styles.timelineScore,
-								{ color: scoreColor(c.score) },
+								styles.timelineRow,
+								i < timeline.length - 1 && styles.timelineBorder,
 							]}
 						>
-							{c.score.toFixed(2)}
-						</Text>
-						<StatusBadge label={c.label} variant={c.label} />
-					</View>
-				))}
+							<Text style={styles.timelineTime}>{c.time}</Text>
+							<Text
+								style={[
+									styles.timelineScore,
+									{ color: scoreColor(c.score) },
+								]}
+							>
+								{c.score.toFixed(2)}
+							</Text>
+							<StatusBadge
+								label={c.label as SessionLabel}
+								variant={c.label as SessionLabel}
+							/>
+						</View>
+					))
+				)}
 			</Card>
 		</ScrollView>
 	);
@@ -166,7 +262,15 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
+	},
+	loader: {
+		marginTop: 40,
+	},
+	error: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.destructive,
+		padding: spacing.screenX,
 	},
 	summaryCard: {
 		padding: 0,
@@ -201,6 +305,12 @@ const styles = StyleSheet.create({
 		marginBottom: 12,
 	},
 	chart: {
+		marginTop: 10,
+	},
+	noData: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 13,
+		color: colors.muted2,
 		marginTop: 10,
 	},
 	chartsRow: {

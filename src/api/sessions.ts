@@ -1,4 +1,10 @@
 import { apiRequest } from './client';
+import {
+	createSessionRequestSchema,
+	createSessionResponseSchema,
+	liveSessionSchema,
+	requireSessionId,
+} from './schemas';
 import type {
 	CreateSessionRequest,
 	CreateSessionResponse,
@@ -11,13 +17,19 @@ export function createSession(
 	return apiRequest<CreateSessionResponse>('/sessions', {
 		method: 'POST',
 		body,
+		bodySchema: createSessionRequestSchema,
+		schema: createSessionResponseSchema,
 	});
 }
 
 export function getSession(sessionId: string): Promise<LiveSession> {
-	return apiRequest<LiveSession>(`/sessions/${sessionId}`);
+	const id = requireSessionId(sessionId);
+	return apiRequest<LiveSession>(`/sessions/${id}`, {
+		schema: liveSessionSchema,
+	});
 }
 
 export function deleteSession(sessionId: string): Promise<void> {
-	return apiRequest<void>(`/sessions/${sessionId}`, { method: 'DELETE' });
+	const id = requireSessionId(sessionId);
+	return apiRequest<void>(`/sessions/${id}`, { method: 'DELETE' });
 }
