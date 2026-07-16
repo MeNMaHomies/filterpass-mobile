@@ -12,6 +12,7 @@ import { Search } from 'lucide-react-native';
 import { EmptyState, ErrorBanner, Eyebrow, ScreenLoader } from '@/components';
 import { HistorySessionRow } from '../components/HistorySessionRow';
 import { useHistorySessions } from '../hooks/useHistorySessions';
+import { useBackendHealth } from '@/features/health';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import {
 	daySectionKey,
@@ -38,6 +39,7 @@ type ListItem = DayHeaderItem | SessionItem;
 export function HistoryScreen() {
 	const router = useRouter();
 	const scrollProps = useScrollScreenProps();
+	const { error: backendError } = useBackendHealth();
 	const {
 		sessions,
 		loading,
@@ -155,7 +157,9 @@ export function HistoryScreen() {
 
 				{loading && sessions.length === 0 ? <ScreenLoader /> : null}
 
-				{error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
+				{error && !backendError ? (
+					<ErrorBanner message={error} onRetry={refresh} />
+				) : null}
 
 				{!loading && !error && filtered.length === 0 ? (
 					<EmptyState
@@ -177,6 +181,7 @@ export function HistoryScreen() {
 			query,
 			loading,
 			error,
+			backendError,
 			filtered.length,
 			refresh,
 			openLive,

@@ -150,10 +150,10 @@ describe('formatApiError', () => {
 
 	it('maps fetch network failures by message pattern', () => {
 		expect(formatApiError(new TypeError('Network request failed'))).toBe(
-			'Cannot reach the FilterPass server. Check your network connection.',
+			'Cannot reach server. Check your network connection.',
 		);
 		expect(formatApiError(new TypeError('Failed to fetch'))).toBe(
-			'Cannot reach the FilterPass server. Check your network connection.',
+			'Cannot reach server. Check your network connection.',
 		);
 	});
 

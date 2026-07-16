@@ -167,7 +167,7 @@ export function isNetworkErrorMessage(message: string): boolean {
 }
 
 export function messageForNetworkError(): string {
-	return 'Cannot reach the FilterPass server. Check your network connection.';
+	return 'Cannot reach server. Check your network connection.';
 }
 
 export function messageForWsSocketError(message: string): string | undefined {
