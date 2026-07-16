@@ -1,4 +1,4 @@
-import { apiUrlSchema } from '@/config/env';
+import { apiUrlSchema, remapApiHostForDevice } from '@/config/env';
 import {
 	createSessionRequestSchema,
 	listHistorySessionsParamsSchema,
@@ -8,6 +8,7 @@ import {
 	sessionIdSchema,
 } from '@/api/schemas';
 import { ApiError } from '@/api/errors';
+import { Platform } from 'react-native';
 
 describe('sessionIdSchema', () => {
 	it('accepts alphanumeric session ids', () => {
@@ -53,6 +54,28 @@ describe('apiUrlSchema', () => {
 
 	it('rejects non-http schemes', () => {
 		expect(apiUrlSchema.safeParse('ws://localhost:8000').success).toBe(false);
+	});
+});
+
+describe('remapApiHostForDevice', () => {
+	const originalOS = Platform.OS;
+
+	afterEach(() => {
+		Object.defineProperty(Platform, 'OS', {
+			configurable: true,
+			get: () => originalOS,
+		});
+		jest.resetModules();
+	});
+
+	it('leaves non-android hosts unchanged', () => {
+		Object.defineProperty(Platform, 'OS', {
+			configurable: true,
+			get: () => 'ios',
+		});
+		expect(remapApiHostForDevice('http://localhost:8000')).toBe(
+			'http://localhost:8000',
+		);
 	});
 });
 

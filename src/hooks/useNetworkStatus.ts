@@ -13,8 +13,9 @@ export type NetworkStatus = {
 function deriveStatus(state: NetInfoState): NetworkStatus {
 	const isConnected = state.isConnected;
 	const isInternetReachable = state.isInternetReachable;
-	const isOffline =
-		isConnected === false || isInternetReachable === false;
+	// Do not use isInternetReachable here — Android emulators often report
+	// false even when the host/LAN (and local backend) are reachable.
+	const isOffline = isConnected === false;
 	return { isConnected, isInternetReachable, isOffline };
 }
 

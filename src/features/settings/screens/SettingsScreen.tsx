@@ -9,6 +9,7 @@ import {
 import Slider from '@react-native-community/slider';
 import { Button, Card, Eyebrow, ScreenLoader } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
+import { apiBaseUrl } from '@/config/env';
 import { hapticSuccess } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -113,6 +114,12 @@ export function SettingsScreen() {
 					Settings apply to the{' '}
 					<Text style={styles.bannerStrong}>next</Text> session only.
 					Stored on device.
+				</Text>
+				<Text
+					style={styles.apiUrl}
+					accessibilityLabel={`API base URL ${apiBaseUrl}`}
+				>
+					API {apiBaseUrl}
 				</Text>
 			</Card>
 
@@ -324,6 +331,12 @@ const styles = StyleSheet.create({
 	bannerStrong: {
 		color: colors.foreground,
 		fontFamily: fontFamilies.sansSemibold,
+	},
+	apiUrl: {
+		marginTop: 8,
+		fontFamily: fontFamilies.mono,
+		fontSize: 11,
+		color: colors.muted2,
 	},
 	savedToast: {
 		fontFamily: fontFamilies.sansSemibold,
