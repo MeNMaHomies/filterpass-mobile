@@ -17,7 +17,11 @@ import {
 	type SessionDefaults,
 } from '@/features/settings/sessionDefaults';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { formatApiError } from '@/lib/apiError';
+import {
+	formatApiError,
+	formatWsFramesError,
+	formatWsOutputError,
+} from '@/lib/apiError';
 import { throttle } from '@/lib/throttle';
 import type { SessionLabel } from '@/types';
 
@@ -156,13 +160,7 @@ export function useLiveSession(): LiveSessionState {
 	const handleWsClose = useCallback(
 		(err: WsCloseError | null) => {
 			if (stoppingRef.current || !err) return;
-			if (err.isAlreadyAttached) {
-				setError('Another client is attached to this session channel.');
-			} else if (err.isSessionNotFound) {
-				setError('Session not found on server.');
-			} else {
-				setError(err.message);
-			}
+			setError(formatApiError(err));
 			teardown();
 		},
 		[teardown],
@@ -243,9 +241,7 @@ export function useLiveSession(): LiveSessionState {
 							].slice(-CHUNK_HISTORY_MAX);
 							flushDerivedMetrics();
 						} else if (msg.type === 'error') {
-							setError(
-								msg.message || `Inference error: ${msg.code}`,
-							);
+							setError(formatWsOutputError(msg.code, msg.message));
 							teardown();
 						}
 					},
@@ -262,6 +258,9 @@ export function useLiveSession(): LiveSessionState {
 						if (msg.type === 'ack') {
 							framesSeenRef.current = msg.frame_idx;
 							flushDerivedMetrics();
+						} else if (msg.type === 'error') {
+							// Soft error — socket stays open (docs/api.md).
+							setError(formatWsFramesError(msg.code));
 						}
 					},
 					onClose: handleWsClose,
