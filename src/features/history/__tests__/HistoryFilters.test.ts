@@ -1,7 +1,7 @@
 import {
 	hasActiveHistoryFilters,
 	sessionMatchesDateFilter,
-} from '@/features/history/components/HistoryFilters';
+} from '@/features/history/lib/historyFilters';
 
 describe('sessionMatchesDateFilter', () => {
 	const noonLocal = new Date(2026, 6, 16, 12, 0, 0);
