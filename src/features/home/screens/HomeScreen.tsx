@@ -10,6 +10,7 @@ import { Button, Card, EmptyState, ErrorBanner, Eyebrow, MotiEnter } from '@/com
 import { KpiGrid } from '../components/KpiGrid';
 import { RecentSessionCard } from '../components/RecentSessionCard';
 import { useHomeOverview } from '../hooks/useHomeOverview';
+import { useBackendHealth } from '@/features/health';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -18,6 +19,7 @@ export function HomeScreen() {
 	const router = useRouter();
 	const scrollProps = useScrollScreenProps();
 	const { kpis, recentSessions, loading, error, refresh } = useHomeOverview();
+	const { error: backendError } = useBackendHealth();
 	const { push } = router;
 
 	const openLive = useCallback(() => {
@@ -50,7 +52,9 @@ export function HomeScreen() {
 				</Text>
 			) : null}
 
-			{error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
+			{error && !backendError ? (
+				<ErrorBanner message={error} onRetry={refresh} />
+			) : null}
 
 			{kpis.length > 0 ? (
 				<MotiEnter index={0}>
@@ -80,8 +84,6 @@ export function HomeScreen() {
 					<EmptyState
 						title="No sessions yet"
 						description="Run a live detection to see recent results here."
-						actionLabel="Start session"
-						onAction={openLive}
 					/>
 				) : (
 					<ScrollView
