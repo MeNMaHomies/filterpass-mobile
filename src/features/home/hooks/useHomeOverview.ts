@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError } from '@/api';
 import { getHealth, getInferenceBuckets, listHistorySessions } from '@/api';
 import type { KpiItem, RecentSession } from '@/types';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
+import { formatApiError } from '@/lib/apiError';
 import { shortSessionId } from '@/lib/formatSession';
 
 type HomeOverviewState = {
@@ -87,13 +87,7 @@ export function useHomeOverview(): HomeOverviewState {
 				})),
 			);
 		} catch (e) {
-			const message =
-				e instanceof ApiError
-					? e.message
-					: e instanceof Error
-						? e.message
-						: 'Failed to load overview';
-			setError(message);
+			setError(formatApiError(e));
 		} finally {
 			setLoading(false);
 		}

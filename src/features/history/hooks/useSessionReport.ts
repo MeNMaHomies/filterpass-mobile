@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ApiError } from '@/api';
 import { getHistorySession, getSessionInferences } from '@/api';
 import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
+import { formatApiError } from '@/lib/apiError';
 import {
 	formatDurationFromTimestamps,
 	formatSessionLabel,
@@ -48,13 +48,7 @@ export function useSessionReport(
 			setSession(sess);
 			setInferences(inf.entries);
 		} catch (e) {
-			const message =
-				e instanceof ApiError
-					? e.message
-					: e instanceof Error
-						? e.message
-						: 'Failed to load report';
-			setError(message);
+			setError(formatApiError(e));
 			setSession(null);
 			setInferences([]);
 		} finally {

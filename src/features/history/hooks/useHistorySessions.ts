@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError } from '@/api';
 import { listHistorySessions } from '@/api';
 import type { HistorySession } from '@/types';
+import { formatApiError } from '@/lib/apiError';
 import {
 	formatAgo,
 	formatDurationFromTimestamps,
@@ -51,13 +51,7 @@ export function useHistorySessions(): HistorySessionsState {
 				})),
 			);
 		} catch (e) {
-			const message =
-				e instanceof ApiError
-					? e.message
-					: e instanceof Error
-						? e.message
-						: 'Failed to load history';
-			setError(message);
+			setError(formatApiError(e));
 		} finally {
 			setLoading(false);
 			setRefreshing(false);

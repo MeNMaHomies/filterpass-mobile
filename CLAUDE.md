@@ -17,7 +17,15 @@
 
 Use it for all REST and WebSocket contracts (sessions, `/ws/frames`, `/ws/output`, message shapes, errors, defaults). Do not guess endpoint fields or payload formats — read the doc first.
 
-When wiring real API calls, align mobile types and mock data in `src/mocks/` with the shapes documented there.
+### Client layout
+
+- `src/api/` — HTTP client (`client.ts`), REST modules (`health`, `sessions`, `history`), WebSocket helpers (`ws/frames`, `ws/output`).
+- `src/types/api.ts` — wire types mirroring `docs/api.md`.
+- `src/config/env.ts` — `EXPO_PUBLIC_API_URL` (default `http://localhost:8000`) and derived `apiWsBaseUrl`.
+- Feature hooks call `@/api`; screens do not call `fetch` directly.
+- `src/mocks/` — fixture data for offline dev/tests only; production screens use hooks + API.
+
+**Env:** copy `.env.example` to `.env`. Android emulator may need `http://10.0.2.2:8000`; physical devices need your machine's LAN IP.
 
 ## Git commits
 
