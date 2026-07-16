@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Button, Card, Eyebrow } from '@/components';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 import {
@@ -13,6 +14,7 @@ import {
 } from '../sessionDefaults';
 
 export function SettingsScreen() {
+	const scrollProps = useScrollScreenProps();
 	const [defaults, setDefaults] = useState<SessionDefaults>(
 		API_SESSION_DEFAULTS,
 	);
@@ -45,6 +47,7 @@ export function SettingsScreen() {
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			{...scrollProps}
 		>
 			<Card style={styles.banner}>
 				<Text style={styles.bannerText}>
@@ -137,7 +140,6 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
 	},
 	banner: {
 		padding: 14,

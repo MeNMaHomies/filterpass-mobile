@@ -17,6 +17,7 @@ import Svg, {
 } from 'react-native-svg';
 import { Card, Eyebrow, StatusBadge } from '@/components';
 import { useSessionReport } from '../hooks/useSessionReport';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -45,6 +46,7 @@ function buildScorePath(
 }
 
 export function ReportScreen({ sessionId }: ReportScreenProps) {
+	const scrollProps = useScrollScreenProps();
 	const { duration, label, chunkCount, timeline, inferences, loading, error } =
 		useSessionReport(sessionId);
 
@@ -63,11 +65,14 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 		return `${linePath} L320,100 L0,100 Z`;
 	}, [linePath]);
 
-	const realCount = timeline.filter((c) => c.label === 'REAL').length;
-	const realPct =
-		timeline.length > 0
-			? Math.round((realCount / timeline.length) * 100)
-			: 0;
+	const realStats = useMemo(() => {
+		const realCount = timeline.filter((c) => c.label === 'REAL').length;
+		const realPct =
+			timeline.length > 0
+				? Math.round((realCount / timeline.length) * 100)
+				: 0;
+		return { realCount, realPct };
+	}, [timeline]);
 
 	const rtfBuckets = useMemo(() => {
 		if (inferences.length === 0) return [0, 0, 0, 0, 0, 0];
@@ -101,6 +106,7 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			{...scrollProps}
 		>
 			<Card style={styles.summaryCard}>
 				<View style={styles.summaryGrid}>
@@ -209,12 +215,12 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 							fill="none"
 							stroke={colors.accent}
 							strokeWidth={8}
-							strokeDasharray={`${(realPct / 100) * 151} 151`}
+							strokeDasharray={`${(realStats.realPct / 100) * 151} 151`}
 							rotation={-90}
 							origin="40, 30"
 						/>
 					</Svg>
-					<Text style={styles.donutMeta}>{realPct}% real</Text>
+					<Text style={styles.donutMeta}>{realStats.realPct}% real</Text>
 				</Card>
 			</View>
 
@@ -256,7 +262,6 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
 	},
 	loader: {
 		marginTop: 40,

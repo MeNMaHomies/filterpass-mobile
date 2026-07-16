@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
-	ScrollView,
 	View,
 	Text,
 	TextInput,
@@ -9,18 +8,26 @@ import {
 	ActivityIndicator,
 	RefreshControl,
 } from 'react-native';
-import { useRouter, type Href } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
 import { RefreshCw } from 'lucide-react-native';
-import { Card, StatusBadge } from '@/components';
+import { HistorySessionRow } from '../components/HistorySessionRow';
 import { useHistorySessions } from '../hooks/useHistorySessions';
-import { scoreColor } from '@/lib/scoreColor';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
+import type { HistorySession } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 export function HistoryScreen() {
-	const router = useRouter();
-	const { sessions, loading, refreshing, error, refresh } =
-		useHistorySessions();
+	const scrollProps = useScrollScreenProps();
+	const {
+		sessions,
+		loading,
+		refreshing,
+		loadingMore,
+		error,
+		refresh,
+		loadMore,
+	} = useHistorySessions();
 	const [query, setQuery] = useState('');
 
 	const filtered = useMemo(() => {
@@ -29,71 +36,96 @@ export function HistoryScreen() {
 		return sessions.filter((s) => s.id.toLowerCase().includes(q));
 	}, [sessions, query]);
 
-	return (
-		<ScrollView
-			contentContainerStyle={styles.scroll}
-			showsVerticalScrollIndicator={false}
-			refreshControl={
-				<RefreshControl
-					refreshing={refreshing}
-					onRefresh={refresh}
-					tintColor={colors.primary}
-				/>
-			}
-		>
-			<View style={styles.searchRow}>
-				<TextInput
-					placeholder="Search session id…"
-					placeholderTextColor={colors.muted2}
-					style={styles.search}
-					value={query}
-					onChangeText={setQuery}
-				/>
-				<Pressable style={styles.refreshBtn} onPress={refresh}>
-					<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
-				</Pressable>
+	const renderItem = useCallback(
+		({ item }: { item: HistorySession }) => (
+			<HistorySessionRow
+				id={item.id}
+				label={item.label}
+				score={item.score}
+				ago={item.ago}
+				duration={item.duration}
+			/>
+		),
+		[],
+	);
+
+	const keyExtractor = useCallback((item: HistorySession) => item.id, []);
+
+	const listHeader = useMemo(
+		() => (
+			<View style={styles.header}>
+				<View style={styles.searchRow}>
+					<TextInput
+						placeholder="Search session id…"
+						placeholderTextColor={colors.muted2}
+						style={styles.search}
+						value={query}
+						onChangeText={setQuery}
+					/>
+					<Pressable style={styles.refreshBtn} onPress={refresh}>
+						<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
+					</Pressable>
+				</View>
+
+				{loading && sessions.length === 0 ? (
+					<ActivityIndicator color={colors.primary} />
+				) : null}
+
+				{error ? <Text style={styles.error}>{error}</Text> : null}
+
+				{!loading && filtered.length === 0 ? (
+					<Text style={styles.empty}>No sessions found</Text>
+				) : null}
 			</View>
+		),
+		[query, loading, sessions.length, error, filtered.length, refresh],
+	);
 
-			{loading && sessions.length === 0 ? (
-				<ActivityIndicator color={colors.primary} />
-			) : null}
+	const listFooter = useMemo(() => {
+		if (!loadingMore) return null;
+		return (
+			<ActivityIndicator
+				color={colors.primary}
+				style={styles.footerLoader}
+			/>
+		);
+	}, [loadingMore]);
 
-			{error ? <Text style={styles.error}>{error}</Text> : null}
-
-			{!loading && filtered.length === 0 ? (
-				<Text style={styles.empty}>No sessions found</Text>
-			) : null}
-
-			{filtered.map((s) => (
-				<Pressable
-					key={s.id}
-					onPress={() => router.push(`/history/${s.id}` as Href)}
-				>
-					<Card style={styles.row}>
-						<View style={styles.rowTop}>
-							<View>
-								<Text style={styles.sessionId}>{s.id}</Text>
-								<Text style={styles.meta}>
-									{s.ago} · {s.duration}
-								</Text>
-							</View>
-							<StatusBadge label={s.label} variant={s.label} />
-						</View>
-						<Text style={[styles.score, { color: scoreColor(s.score) }]}>
-							{s.score.toFixed(2)}
-						</Text>
-					</Card>
-				</Pressable>
-			))}
-		</ScrollView>
+	return (
+		<View style={styles.list}>
+			<FlashList
+				data={filtered}
+				renderItem={renderItem}
+				keyExtractor={keyExtractor}
+				ListHeaderComponent={listHeader}
+				ListFooterComponent={listFooter}
+				onEndReached={query.trim() ? undefined : loadMore}
+				onEndReachedThreshold={0.4}
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={styles.listContent}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={refresh}
+						tintColor={colors.primary}
+					/>
+				}
+				{...scrollProps}
+			/>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
-	scroll: {
+	list: {
+		flex: 1,
+	},
+	listContent: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
+	},
+	header: {
+		marginBottom: 4,
 	},
 	searchRow: {
 		flexDirection: 'row',
@@ -106,6 +138,7 @@ const styles = StyleSheet.create({
 		borderWidth: 1,
 		borderColor: colors.border,
 		borderRadius: 12,
+		borderCurve: 'continuous',
 		paddingHorizontal: 14,
 		paddingVertical: 11,
 		color: colors.foreground,
@@ -116,6 +149,7 @@ const styles = StyleSheet.create({
 		width: 44,
 		height: 44,
 		borderRadius: 10,
+		borderCurve: 'continuous',
 		backgroundColor: 'rgba(255,255,255,0.03)',
 		borderWidth: 1,
 		borderColor: colors.border,
@@ -132,31 +166,9 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
 		color: colors.muted2,
-	},
-	row: {
-		paddingHorizontal: 14,
-		paddingVertical: 13,
 		marginBottom: 8,
 	},
-	rowTop: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'flex-start',
-	},
-	sessionId: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 13,
-		color: colors.foreground,
-	},
-	meta: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		marginTop: 3,
-	},
-	score: {
-		fontFamily: fontFamilies.monoSemibold,
-		fontSize: 20,
-		marginTop: 8,
+	footerLoader: {
+		marginVertical: 16,
 	},
 });

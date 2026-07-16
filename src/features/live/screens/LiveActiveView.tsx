@@ -9,6 +9,7 @@ import {
 	ScoreGauge,
 	StatusBadge,
 } from '@/components';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import type { SessionLabel } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -34,11 +35,14 @@ export function LiveActiveView({
 	lastLatencyMs = null,
 	onStop,
 }: LiveActiveViewProps) {
+	const scrollProps = useScrollScreenProps();
+
 	return (
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
+			{...scrollProps}
 		>
 			<Card glow style={styles.gaugeCard}>
 				<View style={styles.gaugeHeader}>
@@ -117,7 +121,6 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
-		paddingBottom: spacing.contentBottom,
 	},
 	gaugeCard: {
 		paddingTop: 16,

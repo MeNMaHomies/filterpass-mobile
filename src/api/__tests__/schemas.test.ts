@@ -25,7 +25,7 @@ describe('outputScoreSchema', () => {
 	it('parses score websocket message', () => {
 		const result = outputScoreSchema.safeParse({
 			type: 'score',
-			session_id: 'abc',
+			session_id: 'a3f9c2e1b7d4',
 			chunk_idx: 1,
 			chunk_prob: 0.7,
 			session_score: 0.6,

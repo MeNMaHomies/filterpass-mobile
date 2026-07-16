@@ -1,63 +1,49 @@
 import { apiBaseUrl } from '@/config/env';
 import type { ZodType } from 'zod';
+import { ApiError } from './errors';
 
-export class ApiError extends Error {
-	readonly status: number;
-	readonly body: unknown;
-	readonly requestId: string | null;
-
-	constructor(
-		message: string,
-		status: number,
-		body: unknown,
-		requestId: string | null,
-	) {
-		super(message);
-		this.name = 'ApiError';
-		this.status = status;
-		this.body = body;
-		this.requestId = requestId;
-	}
-
-	get code(): string | undefined {
-		if (
-			this.body &&
-			typeof this.body === 'object' &&
-			'detail' in this.body
-		) {
-			const detail = (this.body as { detail: unknown }).detail;
-			if (typeof detail === 'string') return detail;
-			if (
-				detail &&
-				typeof detail === 'object' &&
-				'code' in detail &&
-				typeof (detail as { code: unknown }).code === 'string'
-			) {
-				return (detail as { code: string }).code;
-			}
-		}
-		return undefined;
-	}
-}
+export { ApiError } from './errors';
 
 type RequestOptions<T> = Omit<RequestInit, 'body'> & {
 	body?: unknown;
 	requestId?: string;
 	schema?: ZodType<T>;
+	bodySchema?: ZodType<unknown>;
 };
+
+function validateBody(
+	body: unknown,
+	bodySchema: ZodType<unknown> | undefined,
+	requestId: string | null,
+): unknown {
+	if (body === undefined || !bodySchema) return body;
+
+	const result = bodySchema.safeParse(body);
+	if (!result.success) {
+		throw new ApiError(
+			'Invalid request body',
+			0,
+			result.error.flatten(),
+			requestId,
+		);
+	}
+	return result.data;
+}
 
 export async function apiRequest<T>(
 	path: string,
 	options: RequestOptions<T> = {},
 ): Promise<T> {
-	const { body, requestId, headers, schema, ...rest } = options;
+	const { body, requestId, headers, schema, bodySchema, ...rest } = options;
 
 	const reqHeaders: Record<string, string> = {
 		Accept: 'application/json',
 		...(headers as Record<string, string>),
 	};
 
-	if (body !== undefined) {
+	const validatedBody = validateBody(body, bodySchema, requestId ?? null);
+
+	if (validatedBody !== undefined) {
 		reqHeaders['Content-Type'] = 'application/json';
 	}
 
@@ -68,7 +54,8 @@ export async function apiRequest<T>(
 	const response = await fetch(`${apiBaseUrl}${path}`, {
 		...rest,
 		headers: reqHeaders,
-		body: body !== undefined ? JSON.stringify(body) : undefined,
+		body:
+			validatedBody !== undefined ? JSON.stringify(validatedBody) : undefined,
 	});
 
 	const responseRequestId =

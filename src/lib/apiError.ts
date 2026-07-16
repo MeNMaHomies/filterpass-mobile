@@ -2,6 +2,9 @@ import { ApiError, WsCloseError } from '@/api';
 
 export function formatApiError(error: unknown): string {
 	if (error instanceof ApiError) {
+		if (error.status === 0) {
+			return error.message;
+		}
 		if (error.status === 429 || error.code === 'session_limit_reached') {
 			return 'Session limit reached. Stop an active session or try again later.';
 		}

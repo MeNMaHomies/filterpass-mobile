@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
@@ -24,6 +25,20 @@ const TAB_LABELS: Record<string, string> = {
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 	const insets = useSafeAreaInsets();
 
+	const navigateTo = useCallback(
+		(route: TabRoute, isFocused: boolean) => {
+			const event = navigation.emit({
+				type: 'tabPress',
+				target: route.key,
+				canPreventDefault: true,
+			});
+			if (!isFocused && !event.defaultPrevented) {
+				navigation.navigate(route.name, route.params);
+			}
+		},
+		[navigation],
+	);
+
 	return (
 		<View
 			style={[
@@ -38,22 +53,11 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 						TAB_ICONS[route.name as keyof typeof TAB_ICONS] ?? Home;
 					const label = TAB_LABELS[route.name] ?? route.name;
 
-					const onPress = () => {
-						const event = navigation.emit({
-							type: 'tabPress',
-							target: route.key,
-							canPreventDefault: true,
-						});
-						if (!isFocused && !event.defaultPrevented) {
-							navigation.navigate(route.name, route.params);
-						}
-					};
-
 					return (
 						<Pressable
 							key={route.key}
-							onPress={onPress}
-							style={[styles.tab, isFocused && styles.tabActive]}
+							onPress={() => navigateTo(route, isFocused)}
+							style={[styles.tab, isFocused ? styles.tabActive : null]}
 							accessibilityRole="button"
 							accessibilityState={isFocused ? { selected: true } : {}}
 							accessibilityLabel={label}
@@ -66,7 +70,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 							<Text
 								style={[
 									styles.tabLabel,
-									isFocused && styles.tabLabelActive,
+									isFocused ? styles.tabLabelActive : null,
 								]}
 							>
 								{label}
@@ -94,14 +98,11 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		padding: 6,
 		borderRadius: radius.nav,
+		borderCurve: 'continuous',
 		backgroundColor: colors.navBg,
 		borderWidth: 1,
 		borderColor: colors.navBorder,
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 8 },
-		shadowOpacity: 0.4,
-		shadowRadius: 32,
-		elevation: 12,
+		boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
 	},
 	tab: {
 		flex: 1,
@@ -110,6 +111,7 @@ const styles = StyleSheet.create({
 		gap: 4,
 		paddingVertical: 8,
 		borderRadius: radius.navItem,
+		borderCurve: 'continuous',
 		position: 'relative',
 	},
 	tabActive: {
@@ -131,6 +133,7 @@ const styles = StyleSheet.create({
 		width: 6,
 		height: 6,
 		borderRadius: 3,
+		borderCurve: 'continuous',
 		backgroundColor: colors.accent,
 	},
 });

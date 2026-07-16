@@ -1,5 +1,5 @@
 import type { OutputMessage } from '@/types/api';
-import { outputMessageSchema, parseJsonMessage } from '../schemas';
+import { outputMessageSchema, parseJsonMessage, requireSessionId } from '../schemas';
 import { mapWsClose, socketUrl, WsCloseError } from './url';
 
 export type OutputSocketCallbacks = {
@@ -17,7 +17,8 @@ export function connectOutputSocket(
 	sessionId: string,
 	callbacks: OutputSocketCallbacks = {},
 ): OutputSocket {
-	const ws = new WebSocket(socketUrl(`/ws/output/${sessionId}`));
+	const id = requireSessionId(sessionId);
+	const ws = new WebSocket(socketUrl(`/ws/output/${id}`));
 
 	let closed = false;
 

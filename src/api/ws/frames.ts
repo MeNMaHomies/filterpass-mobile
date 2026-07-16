@@ -1,5 +1,9 @@
 import type { FramesMessage } from '@/types/api';
-import { framesMessageSchema, parseJsonMessage } from '../schemas';
+import {
+	framesMessageSchema,
+	parseJsonMessage,
+	requireSessionId,
+} from '../schemas';
 import { mapWsClose, socketUrl, WsCloseError } from './url';
 
 export type FramesSocketCallbacks = {
@@ -19,7 +23,8 @@ export function connectFramesSocket(
 	sessionId: string,
 	callbacks: FramesSocketCallbacks = {},
 ): FramesSocket {
-	const ws = new WebSocket(socketUrl(`/ws/frames/${sessionId}`));
+	const id = requireSessionId(sessionId);
+	const ws = new WebSocket(socketUrl(`/ws/frames/${id}`));
 	ws.binaryType = 'arraybuffer';
 
 	let closed = false;

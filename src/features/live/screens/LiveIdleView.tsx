@@ -1,6 +1,7 @@
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { Card, Eyebrow, StatusBadge } from '@/components';
 import { MicButton } from '../components/MicButton';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import type { SessionDefaults } from '@/features/settings/sessionDefaults';
 import type { ConnectionStatus } from '../hooks/useLiveSession';
 import { colors, spacing } from '@/theme/tokens';
@@ -19,6 +20,7 @@ export function LiveIdleView({
 	defaults,
 	error,
 }: LiveIdleViewProps) {
+	const scrollProps = useScrollScreenProps();
 	const badgeVariant =
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 
@@ -28,6 +30,7 @@ export function LiveIdleView({
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
+			{...scrollProps}
 		>
 			<View style={styles.center}>
 				<MicButton onPress={onMicPress} />
@@ -70,7 +73,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		paddingHorizontal: spacing.screenX,
 		paddingVertical: 24,
-		paddingBottom: spacing.contentBottom,
+		paddingBottom: 24,
 	},
 	center: {
 		alignItems: 'center',

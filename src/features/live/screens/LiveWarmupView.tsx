@@ -1,6 +1,7 @@
 import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
 import { Square } from 'lucide-react-native';
 import { Card, Eyebrow, StatusBadge } from '@/components';
+import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -15,6 +16,7 @@ export function LiveWarmupView({
 	bufferTargetSamples = 1,
 	onCancel,
 }: LiveWarmupViewProps) {
+	const scrollProps = useScrollScreenProps();
 	const fill =
 		bufferTargetSamples > 0
 			? Math.min(
@@ -28,6 +30,7 @@ export function LiveWarmupView({
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
+			{...scrollProps}
 		>
 			<StatusBadge label="Warming up" variant="WARMUP" />
 
@@ -68,7 +71,6 @@ const styles = StyleSheet.create({
 	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 24,
-		paddingBottom: spacing.contentBottom,
 		alignItems: 'center',
 	},
 	progressBlock: {

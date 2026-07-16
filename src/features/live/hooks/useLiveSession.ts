@@ -4,7 +4,6 @@ import {
 	setAudioModeAsync,
 	useAudioStream,
 } from 'expo-audio';
-import { ApiError } from '@/api';
 import { createSession, deleteSession } from '@/api';
 import {
 	connectFramesSocket,
@@ -19,6 +18,7 @@ import {
 } from '@/features/settings/sessionDefaults';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
 import { formatApiError } from '@/lib/apiError';
+import { throttle } from '@/lib/throttle';
 import type { SessionLabel } from '@/types';
 
 export type LivePhase = 'idle' | 'connecting' | 'warmup' | 'active';
@@ -51,6 +51,7 @@ export type LiveSessionState = {
 };
 
 const CHUNK_HISTORY_MAX = 48;
+const CHART_FLUSH_MS = 250;
 
 export function useLiveSession(): LiveSessionState {
 	const [phase, setPhase] = useState<LivePhase>('idle');
@@ -74,6 +75,20 @@ export function useLiveSession(): LiveSessionState {
 	const spoofThresholdRef = useRef(0.5);
 	const stoppingRef = useRef(false);
 	const hasScoredRef = useRef(false);
+	const chunkHistoryRef = useRef<number[]>([]);
+	const framesSeenRef = useRef(0);
+	const flushDerivedMetricsRef = useRef<() => void>(() => {});
+
+	useEffect(() => {
+		flushDerivedMetricsRef.current = throttle(() => {
+			setChunkHistory([...chunkHistoryRef.current]);
+			setFramesSeen(framesSeenRef.current);
+		}, CHART_FLUSH_MS);
+	}, []);
+
+	const flushDerivedMetrics = useCallback(() => {
+		flushDerivedMetricsRef.current();
+	}, []);
 
 	const { stream: audioStream } = useAudioStream({
 		encoding: 'int16',
@@ -115,6 +130,8 @@ export function useLiveSession(): LiveSessionState {
 		setSessionScore(0);
 		setChunkIdx(0);
 		setLabel('REAL');
+		chunkHistoryRef.current = [];
+		framesSeenRef.current = 0;
 		setChunkHistory([]);
 		setBufferFillSamples(0);
 		setBufferTargetSamples(0);
@@ -220,9 +237,11 @@ export function useLiveSession(): LiveSessionState {
 							);
 							setLastRtf(msg.rtf);
 							setLastLatencyMs(msg.latency_ms);
-							setChunkHistory((prev) =>
-								[...prev, msg.session_score].slice(-CHUNK_HISTORY_MAX),
-							);
+							chunkHistoryRef.current = [
+								...chunkHistoryRef.current,
+								msg.session_score,
+							].slice(-CHUNK_HISTORY_MAX);
+							flushDerivedMetrics();
 						} else if (msg.type === 'error') {
 							setError(
 								msg.message || `Inference error: ${msg.code}`,
@@ -241,7 +260,8 @@ export function useLiveSession(): LiveSessionState {
 					},
 					onMessage: (msg) => {
 						if (msg.type === 'ack') {
-							setFramesSeen(msg.frame_idx);
+							framesSeenRef.current = msg.frame_idx;
+							flushDerivedMetrics();
 						}
 					},
 					onClose: handleWsClose,
@@ -255,7 +275,7 @@ export function useLiveSession(): LiveSessionState {
 			setError(formatApiError(e));
 			await teardown();
 		}
-	}, [phase, audioStream, teardown, handleWsClose]);
+	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics]);
 
 	const stop = useCallback(async () => {
 		setError(null);

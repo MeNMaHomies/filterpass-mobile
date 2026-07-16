@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { z } from 'zod';
 import { sessionDefaultsSchema } from '@/api/schemas';
 import type { CreateSessionRequest } from '@/types/api';
 

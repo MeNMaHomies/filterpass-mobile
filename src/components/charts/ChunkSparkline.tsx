@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '@/theme/tokens';
 
@@ -44,7 +45,10 @@ function buildSparklinePaths(
 	return { line, area };
 }
 
-export function ChunkSparkline({ chunks, height = 48 }: ChunkSparklineProps) {
+export const ChunkSparkline = memo(function ChunkSparkline({
+	chunks,
+	height = 48,
+}: ChunkSparklineProps) {
 	const w = 300;
 	const paths = buildSparklinePaths(chunks, w, height);
 	if (!paths) return null;
@@ -75,4 +79,4 @@ export function ChunkSparkline({ chunks, height = 48 }: ChunkSparklineProps) {
 			/>
 		</Svg>
 	);
-}
+});

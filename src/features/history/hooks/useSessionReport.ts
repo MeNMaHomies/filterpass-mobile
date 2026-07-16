@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getHistorySession, getSessionInferences } from '@/api';
+import { getHistorySession, getSessionInferences, parseSessionId } from '@/api';
 import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
 import { formatApiError } from '@/lib/apiError';
@@ -30,10 +30,23 @@ export function useSessionReport(
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	const validatedSessionId = useMemo(
+		() => parseSessionId(sessionId),
+		[sessionId],
+	);
+
 	const load = useCallback(async () => {
 		if (!sessionId) {
 			setLoading(false);
 			setError('Session not found');
+			return;
+		}
+
+		if (!validatedSessionId) {
+			setLoading(false);
+			setError('Invalid session ID');
+			setSession(null);
+			setInferences([]);
 			return;
 		}
 
@@ -42,8 +55,8 @@ export function useSessionReport(
 
 		try {
 			const [sess, inf] = await Promise.all([
-				getHistorySession(sessionId),
-				getSessionInferences(sessionId, { limit: 1000 }),
+				getHistorySession(validatedSessionId),
+				getSessionInferences(validatedSessionId, { limit: 1000 }),
 			]);
 			setSession(sess);
 			setInferences(inf.entries);
@@ -54,7 +67,7 @@ export function useSessionReport(
 		} finally {
 			setLoading(false);
 		}
-	}, [sessionId]);
+	}, [sessionId, validatedSessionId]);
 
 	useEffect(() => {
 		load();

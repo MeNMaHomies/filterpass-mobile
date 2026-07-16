@@ -1,6 +1,11 @@
 import type { SessionLabel } from '@/types';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
 
+const timeFormatter = new Intl.DateTimeFormat(undefined, {
+	hour: '2-digit',
+	minute: '2-digit',
+});
+
 export function formatDuration(seconds: number): string {
 	if (seconds < 60) return `${Math.round(seconds)}s`;
 	const m = Math.floor(seconds / 60);
@@ -37,6 +42,5 @@ export function shortSessionId(sessionId: string): string {
 }
 
 export function formatTimestamp(ts: number): string {
-	const d = new Date(ts * 1000);
-	return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+	return timeFormatter.format(new Date(ts * 1000));
 }

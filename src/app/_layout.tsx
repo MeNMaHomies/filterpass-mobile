@@ -21,7 +21,7 @@ import { colors } from '@/theme/tokens';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-	const [fontsLoaded] = useFonts({
+	const [fontsLoaded, fontError] = useFonts({
 		Geist_400Regular,
 		Geist_500Medium,
 		Geist_600SemiBold,
@@ -32,12 +32,12 @@ export default function RootLayout() {
 	});
 
 	useEffect(() => {
-		if (fontsLoaded) {
+		if (fontsLoaded || fontError) {
 			SplashScreen.hideAsync();
 		}
-	}, [fontsLoaded]);
+	}, [fontsLoaded, fontError]);
 
-	if (!fontsLoaded) {
+	if (!fontsLoaded && !fontError) {
 		return null;
 	}
 
