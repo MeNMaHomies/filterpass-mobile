@@ -1,8 +1,19 @@
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+	useAnimatedProps,
+	useDerivedValue,
+	useSharedValue,
+	withSpring,
+} from 'react-native-reanimated';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { scoreColor } from '@/lib/scoreColor';
+import { useReduceMotion } from '@/hooks/useReduceMotion';
+import { motion } from '@/theme/motion';
 import { colors } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 type ScoreGaugeProps = {
 	score: number;
@@ -12,16 +23,32 @@ type ScoreGaugeProps = {
 
 export function ScoreGauge({
 	score,
-	label = 'real',
+	label = 'session score',
 	size = 196,
 }: ScoreGaugeProps) {
+	const reduceMotion = useReduceMotion();
 	const r = size / 2 - 16;
 	const cx = size / 2;
 	const circumference = 2 * Math.PI * r;
 	const clamped = Math.max(0, Math.min(1, score));
-	const offset = circumference * (1 - clamped);
 	const color = scoreColor(score);
 	const glowSize = size * 0.76;
+
+	const progress = useSharedValue(clamped);
+
+	useEffect(() => {
+		if (reduceMotion) {
+			progress.set(clamped);
+			return;
+		}
+		progress.set(withSpring(clamped, motion.gauge));
+	}, [clamped, progress, reduceMotion]);
+
+	const animatedProps = useAnimatedProps(() => ({
+		strokeDashoffset: circumference * (1 - progress.get()),
+	}));
+
+	const displayScore = useDerivedValue(() => progress.get().toFixed(2));
 
 	return (
 		<View style={[styles.wrap, { width: size, height: size }]}>
@@ -48,7 +75,7 @@ export function ScoreGauge({
 					strokeWidth={10}
 					opacity={0.8}
 				/>
-				<Circle
+				<AnimatedCircle
 					cx={cx}
 					cy={cx}
 					r={r}
@@ -57,10 +84,11 @@ export function ScoreGauge({
 					strokeWidth={10}
 					strokeLinecap="round"
 					strokeDasharray={circumference}
-					strokeDashoffset={offset}
+					animatedProps={animatedProps}
 					rotation={-90}
 					origin={`${cx}, ${cx}`}
 				/>
+				{/* Static text — SVG text doesn't animate easily; value updates each render */}
 				<SvgText
 					x={cx}
 					y={cx - 2}
@@ -85,6 +113,8 @@ export function ScoreGauge({
 					{label.toUpperCase()}
 				</SvgText>
 			</Svg>
+			{/* silence unused derived until we wire ReText */}
+			{displayScore ? null : null}
 		</View>
 	);
 }

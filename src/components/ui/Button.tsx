@@ -1,5 +1,4 @@
 import {
-	Pressable,
 	Text,
 	StyleSheet,
 	type PressableProps,
@@ -7,6 +6,7 @@ import {
 	type ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -23,18 +23,19 @@ export function Button({
 	label,
 	style,
 	disabled,
+	accessibilityLabel,
 	...props
 }: ButtonProps) {
+	const a11yLabel = accessibilityLabel ?? label;
+
 	if (variant === 'primary') {
 		return (
-			<Pressable
-				style={({ pressed }) => [
-					styles.primaryOuter,
-					pressed && styles.pressed,
-					disabled && styles.disabled,
-					style,
-				]}
+			<PressableScale
+				style={[styles.primaryOuter, disabled && styles.disabled, style]}
 				disabled={disabled}
+				accessibilityRole="button"
+				accessibilityLabel={a11yLabel}
+				accessibilityState={{ disabled: !!disabled }}
 				{...props}
 			>
 				<LinearGradient
@@ -45,7 +46,7 @@ export function Button({
 				>
 					<Text style={styles.primaryLabel}>{label}</Text>
 				</LinearGradient>
-			</Pressable>
+			</PressableScale>
 		);
 	}
 
@@ -57,15 +58,17 @@ export function Button({
 				: styles.ghost;
 
 	return (
-		<Pressable
-			style={({ pressed }) => [
+		<PressableScale
+			style={[
 				styles.base,
 				variantStyle,
-				pressed && styles.pressed,
 				disabled && styles.disabled,
 				style,
 			]}
 			disabled={disabled}
+			accessibilityRole="button"
+			accessibilityLabel={a11yLabel}
+			accessibilityState={{ disabled: !!disabled }}
 			{...props}
 		>
 			<Text
@@ -78,28 +81,32 @@ export function Button({
 			>
 				{label}
 			</Text>
-		</Pressable>
+		</PressableScale>
 	);
 }
 
 const styles = StyleSheet.create({
 	base: {
-		height: 36,
+		minHeight: 44,
 		borderRadius: radius.button,
 		overflow: 'hidden',
 		justifyContent: 'center',
 		alignItems: 'center',
+		paddingVertical: 10,
 	},
 	primaryOuter: {
-		height: 36,
+		minHeight: 44,
 		borderRadius: radius.pill,
 		overflow: 'hidden',
+		justifyContent: 'center',
 	},
 	primaryGradient: {
-		flex: 1,
+		width: '100%',
+		minHeight: 44,
 		justifyContent: 'center',
 		alignItems: 'center',
 		paddingHorizontal: 16,
+		paddingVertical: 10,
 		borderRadius: radius.pill,
 		shadowColor: colors.primary,
 		shadowOffset: { width: 0, height: 4 },
@@ -140,6 +147,5 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.sansMedium,
 		fontWeight: '500',
 	},
-	pressed: { opacity: 0.85 },
 	disabled: { opacity: 0.4 },
 });

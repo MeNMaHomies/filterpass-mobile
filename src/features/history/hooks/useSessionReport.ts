@@ -4,6 +4,10 @@ import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
 import { formatApiError } from '@/lib/apiError';
 import {
+	messageForClientError,
+	REST_ERROR_MESSAGES,
+} from '@/lib/apiErrorMessages';
+import {
 	formatDurationFromTimestamps,
 	formatSessionLabel,
 	formatTimestamp,
@@ -38,13 +42,16 @@ export function useSessionReport(
 	const load = useCallback(async () => {
 		if (!sessionId) {
 			setLoading(false);
-			setError('Session not found');
+			setError(REST_ERROR_MESSAGES.session_not_found);
 			return;
 		}
 
 		if (!validatedSessionId) {
 			setLoading(false);
-			setError('Invalid session ID');
+			setError(
+				messageForClientError('Invalid session ID') ??
+					'This session link is invalid.',
+			);
 			setSession(null);
 			setInferences([]);
 			return;

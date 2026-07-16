@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { AppShell, StatusBadge } from '@/components';
+import { useCallback, useMemo, useRef } from 'react';
+import { AppShell, ConfirmSheet, MotiPhase } from '@/components';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import {
 	LiveActiveView,
 	LiveIdleView,
@@ -7,80 +8,83 @@ import {
 	useLiveSession,
 } from '@/features/live';
 import { shortSessionId } from '@/lib/formatSession';
-import { colors, spacing } from '@/theme/tokens';
-import { fontFamilies } from '@/theme/typography';
 
 export default function LiveRoute() {
 	const live = useLiveSession();
+	const stopSheetRef = useRef<BottomSheetModal>(null);
 
 	const subtitle =
 		live.sessionId && live.phase !== 'idle'
 			? `sess_${shortSessionId(live.sessionId)}`
 			: undefined;
 
-	return (
-		<AppShell
-			title="Live Monitor"
-			subtitle={subtitle}
-			headerRight={
-				live.phase === 'active' || live.phase === 'warmup' ? (
-					<StatusBadge
-						label={
-							live.phase === 'warmup' ? 'Warming up' : 'Live'
-						}
-						variant={live.phase === 'warmup' ? 'WARMUP' : 'REAL'}
-					/>
-				) : null
-			}
-		>
-			{live.phase === 'idle' || live.phase === 'connecting' ? (
+	const phaseKey =
+		live.phase === 'connecting'
+			? 'idle'
+			: live.phase === 'idle'
+				? 'idle'
+				: live.phase;
+
+	const requestStop = useCallback(() => {
+		stopSheetRef.current?.present();
+	}, []);
+
+	const confirmStop = useCallback(() => {
+		void live.stop();
+	}, [live]);
+
+	const phaseView = useMemo(() => {
+		if (live.phase === 'idle' || live.phase === 'connecting') {
+			return (
 				<LiveIdleView
 					onMicPress={live.start}
 					connectionStatus={live.connectionStatus}
 					defaults={live.defaults}
 					error={live.error}
+					onClearError={live.clearError}
+					busy={live.phase === 'connecting'}
 				/>
-			) : null}
-
-			{live.phase === 'active' ? (
-				<>
-					{live.error ? (
-						<View style={styles.errorBanner}>
-							<Text style={styles.errorText}>{live.error}</Text>
-						</View>
-					) : null}
-					<LiveActiveView
-						sessionScore={live.sessionScore}
-						chunkIdx={live.chunkIdx}
-						label={live.label}
-						chunkHistory={live.chunkHistory}
-						framesSeen={live.framesSeen}
-						lastRtf={live.lastRtf}
-						lastLatencyMs={live.lastLatencyMs}
-						onStop={live.stop}
-					/>
-				</>
-			) : null}
-
-			{live.phase === 'warmup' ? (
-				<LiveWarmupView
-					bufferFillSamples={live.bufferFillSamples}
-					bufferTargetSamples={live.bufferTargetSamples}
-					onCancel={live.stop}
+			);
+		}
+		if (live.phase === 'active') {
+			return (
+				<LiveActiveView
+					sessionScore={live.sessionScore}
+					chunkIdx={live.chunkIdx}
+					label={live.label}
+					chunkHistory={live.chunkHistory}
+					framesSeen={live.framesSeen}
+					lastRtf={live.lastRtf}
+					lastLatencyMs={live.lastLatencyMs}
+					error={live.error}
+					onStop={requestStop}
+					onClearError={live.clearError}
 				/>
-			) : null}
+			);
+		}
+		return (
+			<LiveWarmupView
+				bufferFillSamples={live.bufferFillSamples}
+				bufferTargetSamples={live.bufferTargetSamples}
+				error={live.error}
+				onCancel={requestStop}
+				onClearError={live.clearError}
+			/>
+		);
+	}, [live, requestStop]);
+
+	return (
+		<AppShell title="Live Monitor" subtitle={subtitle}>
+			<MotiPhase phaseKey={phaseKey}>{phaseView}</MotiPhase>
+			<ConfirmSheet
+				ref={stopSheetRef}
+				title="End live session?"
+				description="Stops mic capture and closes the detector session on the server."
+				confirmLabel="End session"
+				cancelLabel="Keep going"
+				destructive
+				onConfirm={confirmStop}
+			/>
 		</AppShell>
 	);
 }
-
-const styles = StyleSheet.create({
-	errorBanner: {
-		paddingHorizontal: spacing.screenX,
-		paddingTop: 8,
-	},
-	errorText: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.destructive,
-	},
-});

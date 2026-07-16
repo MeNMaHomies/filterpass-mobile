@@ -1,10 +1,11 @@
 import { memo, useCallback } from 'react';
-import { Pressable, View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Card, StatusBadge } from '@/components';
-import type { HistorySession } from '@/types';
+import { MotiEnter, PressableScale, StatusBadge } from '@/components';
+import type { HistorySession, SessionLabel } from '@/types';
+import { shortSessionId } from '@/lib/formatSession';
 import { scoreColor } from '@/lib/scoreColor';
-import { colors } from '@/theme/tokens';
+import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 type HistorySessionRowProps = {
@@ -13,7 +14,14 @@ type HistorySessionRowProps = {
 	score: number;
 	ago: string;
 	duration: string;
+	index?: number;
 };
+
+function railColor(label: SessionLabel): string {
+	if (label === 'SPOOF') return colors.destructive;
+	if (label === 'UNCERTAIN') return colors.amber;
+	return colors.accent;
+}
 
 export const HistorySessionRow = memo(function HistorySessionRow({
 	id,
@@ -21,57 +29,118 @@ export const HistorySessionRow = memo(function HistorySessionRow({
 	score,
 	ago,
 	duration,
+	index = 0,
 }: HistorySessionRowProps) {
 	const router = useRouter();
+	const displayId = shortSessionId(id);
+	const color = scoreColor(score);
+	const fillPct = Math.min(1, Math.max(0, score));
+
 	const onPress = useCallback(() => {
 		router.push(`/history/${id}` as Href);
 	}, [router, id]);
 
 	return (
-		<Pressable onPress={onPress}>
-			<Card style={styles.row}>
-				<View style={styles.rowTop}>
-					<View>
-						<Text style={styles.sessionId}>{id}</Text>
+		<MotiEnter index={index}>
+			<PressableScale
+				onPress={onPress}
+				accessibilityRole="button"
+				accessibilityLabel={`Session ${displayId}, ${label}, score ${score.toFixed(2)}, ${ago}`}
+				accessibilityHint="Opens the session report"
+				scaleTo={0.985}
+			>
+				<View
+					style={[styles.row, label === 'SPOOF' && styles.rowSpoof]}
+				>
+					<View
+						style={[styles.rail, { backgroundColor: railColor(label) }]}
+					/>
+					<View style={styles.body}>
+						<View style={styles.top}>
+							<View style={styles.scoreBlock}>
+								<Text style={[styles.score, { color }]}>
+									{score.toFixed(2)}
+								</Text>
+								<View style={styles.barTrack}>
+									<View
+										style={[
+											styles.barFill,
+											{
+												transform: [{ scaleX: fillPct }],
+												backgroundColor: color,
+											},
+										]}
+									/>
+								</View>
+							</View>
+							<StatusBadge label={label} variant={label} />
+						</View>
 						<Text style={styles.meta}>
-							{ago} · {duration}
+							{displayId} · {ago} · {duration}
 						</Text>
 					</View>
-					<StatusBadge label={label} variant={label} />
 				</View>
-				<Text style={[styles.score, { color: scoreColor(score) }]}>
-					{score.toFixed(2)}
-				</Text>
-			</Card>
-		</Pressable>
+			</PressableScale>
+		</MotiEnter>
 	);
 });
 
 const styles = StyleSheet.create({
 	row: {
-		paddingHorizontal: 14,
-		paddingVertical: 13,
+		flexDirection: 'row',
+		backgroundColor: colors.card,
+		borderWidth: 1,
+		borderColor: colors.border,
+		borderRadius: radius.card,
+		borderCurve: 'continuous',
+		overflow: 'hidden',
 		marginBottom: 8,
+		minHeight: 76,
 	},
-	rowTop: {
+	rowSpoof: {
+		backgroundColor: colors.destructiveSoft,
+		borderColor: 'rgba(239,68,68,0.28)',
+	},
+	rail: {
+		width: 3,
+	},
+	body: {
+		flex: 1,
+		paddingHorizontal: 14,
+		paddingVertical: 12,
+		gap: 8,
+	},
+	top: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		alignItems: 'flex-start',
+		gap: 12,
 	},
-	sessionId: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 13,
-		color: colors.foreground,
-	},
-	meta: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 11,
-		color: colors.muted2,
-		marginTop: 3,
+	scoreBlock: {
+		flex: 1,
+		gap: 6,
 	},
 	score: {
 		fontFamily: fontFamilies.monoSemibold,
-		fontSize: 20,
-		marginTop: 8,
+		fontSize: 24,
+		letterSpacing: -0.5,
+	},
+	barTrack: {
+		height: 3,
+		borderRadius: 99,
+		backgroundColor: colors.border,
+		overflow: 'hidden',
+		maxWidth: 120,
+	},
+	barFill: {
+		height: '100%',
+		width: '100%',
+		borderRadius: 99,
+		transformOrigin: 'left center',
+	},
+	meta: {
+		fontFamily: fontFamilies.mono,
+		fontSize: 11,
+		color: colors.muted2,
 	},
 });

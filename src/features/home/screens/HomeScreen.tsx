@@ -1,18 +1,25 @@
 import { useCallback } from 'react';
-import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+	ScrollView,
+	Text,
+	StyleSheet,
+	RefreshControl,
+} from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Button, Card, Eyebrow } from '@/components';
+import { Button, Card, EmptyState, ErrorBanner, Eyebrow, MotiEnter } from '@/components';
 import { KpiGrid } from '../components/KpiGrid';
 import { RecentSessionCard } from '../components/RecentSessionCard';
 import { useHomeOverview } from '../hooks/useHomeOverview';
+import { useBackendHealth } from '@/features/health';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
 export function HomeScreen() {
 	const router = useRouter();
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const { kpis, recentSessions, loading, error, refresh } = useHomeOverview();
+	const { error: backendError } = useBackendHealth();
 	const { push } = router;
 
 	const openLive = useCallback(() => {
@@ -28,51 +35,72 @@ export function HomeScreen() {
 
 	return (
 		<ScrollView
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
+			refreshControl={
+				<RefreshControl
+					refreshing={Boolean(loading && kpis.length > 0)}
+					onRefresh={refresh}
+					tintColor={colors.primary}
+				/>
+			}
 			{...scrollProps}
 		>
 			{loading && kpis.length === 0 ? (
-				<ActivityIndicator color={colors.primary} style={styles.loader} />
-			) : null}
-
-			{error ? (
-				<Card style={styles.errorCard}>
-					<Text style={styles.errorText}>{error}</Text>
-					<Button variant="ghost" label="Retry" onPress={refresh} />
-				</Card>
-			) : null}
-
-			{kpis.length > 0 ? <KpiGrid items={kpis} /> : null}
-
-			<Card glow style={styles.ctaCard}>
-				<Eyebrow>Start session</Eyebrow>
-				<Text style={styles.ctaTitle}>Live spoof detection</Text>
-				<Text style={styles.ctaBody}>
-					Mic capture streams to the detector. No account required.
+				<Text style={styles.loadingHint} accessibilityLabel="Loading overview">
+					Loading overview…
 				</Text>
-				<Button
-					variant="primary"
-					label="Start session"
-					style={styles.ctaButton}
-					onPress={openLive}
-				/>
-			</Card>
+			) : null}
 
-			<Eyebrow>Recent sessions</Eyebrow>
-			{recentSessions.length === 0 && !loading ? (
-				<Text style={styles.empty}>No sessions yet</Text>
-			) : (
-				<View style={styles.recentRow}>
-					{recentSessions.map((s) => (
-						<RecentSessionCard
-							key={s.sessionId}
-							session={s}
-							onPress={openSession}
-						/>
-					))}
-				</View>
-			)}
+			{error && !backendError ? (
+				<ErrorBanner message={error} onRetry={refresh} />
+			) : null}
+
+			{kpis.length > 0 ? (
+				<MotiEnter index={0}>
+					<KpiGrid items={kpis} />
+				</MotiEnter>
+			) : null}
+
+			<MotiEnter index={1}>
+				<Card glow style={styles.ctaCard}>
+					<Eyebrow>Start session</Eyebrow>
+					<Text style={styles.ctaTitle}>Live spoof detection</Text>
+					<Text style={styles.ctaBody}>
+						Mic capture streams to the detector. No account required.
+					</Text>
+					<Button
+						variant="primary"
+						label="Start session"
+						style={styles.ctaButton}
+						onPress={openLive}
+					/>
+				</Card>
+			</MotiEnter>
+
+			<MotiEnter index={2}>
+				<Eyebrow>Recent sessions</Eyebrow>
+				{recentSessions.length === 0 && !loading ? (
+					<EmptyState
+						title="No sessions yet"
+						description="Run a live detection to see recent results here."
+					/>
+				) : (
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.recentRow}
+					>
+						{recentSessions.map((s) => (
+							<RecentSessionCard
+								key={s.sessionId}
+								session={s}
+								onPress={openSession}
+							/>
+						))}
+					</ScrollView>
+				)}
+			</MotiEnter>
 		</ScrollView>
 	);
 }
@@ -82,18 +110,11 @@ const styles = StyleSheet.create({
 		paddingHorizontal: spacing.screenX,
 		paddingTop: spacing.screenY,
 	},
-	loader: {
-		marginBottom: 14,
-	},
-	errorCard: {
-		padding: 14,
-		marginBottom: 14,
-		gap: 10,
-	},
-	errorText: {
+	loadingHint: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
-		color: colors.destructive,
+		color: colors.muted2,
+		marginBottom: 14,
 	},
 	ctaCard: {
 		padding: 16,
@@ -115,18 +136,13 @@ const styles = StyleSheet.create({
 	},
 	ctaButton: {
 		width: '100%',
-		height: 40,
-	},
-	empty: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.muted2,
-		paddingTop: 10,
+		minHeight: 44,
 	},
 	recentRow: {
 		flexDirection: 'row',
 		gap: 10,
 		paddingTop: 10,
 		paddingBottom: 4,
+		paddingRight: spacing.screenX,
 	},
 });

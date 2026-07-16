@@ -44,3 +44,35 @@ export function shortSessionId(sessionId: string): string {
 export function formatTimestamp(ts: number): string {
 	return timeFormatter.format(new Date(ts * 1000));
 }
+
+function sameCalendarDay(a: Date, b: Date): boolean {
+	return (
+		a.getFullYear() === b.getFullYear() &&
+		a.getMonth() === b.getMonth() &&
+		a.getDate() === b.getDate()
+	);
+}
+
+const daySectionFormatter = new Intl.DateTimeFormat(undefined, {
+	month: 'short',
+	day: 'numeric',
+	year: 'numeric',
+});
+
+/** Section label for history list grouping. */
+export function formatDaySectionLabel(
+	ts: number,
+	nowMs = Date.now(),
+): string {
+	const date = new Date(ts * 1000);
+	const now = new Date(nowMs);
+	if (sameCalendarDay(date, now)) return 'Today';
+	const yesterday = new Date(nowMs - 86_400_000);
+	if (sameCalendarDay(date, yesterday)) return 'Yesterday';
+	return daySectionFormatter.format(date);
+}
+
+export function daySectionKey(ts: number): string {
+	const d = new Date(ts * 1000);
+	return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}

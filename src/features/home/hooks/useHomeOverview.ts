@@ -51,12 +51,12 @@ export function useHomeOverview(): HomeOverviewState {
 
 			setKpis([
 				{
-					label: 'Backend',
-					value: health.model_loaded ? 'Online' : 'No model',
+					label: 'Detector',
+					value: health.model_loaded ? 'Ready' : 'Unavailable',
 					live: health.status === 'ok' && health.model_loaded,
 				},
 				{
-					label: 'Live sessions',
+					label: 'Active now',
 					value: String(liveSessions.length),
 					live: liveSessions.length > 0,
 				},
@@ -66,7 +66,7 @@ export function useHomeOverview(): HomeOverviewState {
 					live: false,
 				},
 				{
-					label: 'Avg RTF',
+					label: 'Avg speed',
 					value: avgRtf !== null ? avgRtf.toFixed(2) : '—',
 					live: false,
 				},

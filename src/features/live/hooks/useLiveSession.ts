@@ -12,12 +12,18 @@ import {
 	type OutputSocket,
 	WsCloseError,
 } from '@/api/ws';
+import { useBackendHealth } from '@/features/health';
 import {
 	loadSessionDefaults,
 	type SessionDefaults,
 } from '@/features/settings/sessionDefaults';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { formatApiError } from '@/lib/apiError';
+import {
+	formatApiError,
+	formatWsFramesError,
+	formatWsOutputError,
+} from '@/lib/apiError';
+import { hapticError, hapticLight, hapticMedium, hapticWarning } from '@/lib/haptics';
 import { throttle } from '@/lib/throttle';
 import type { SessionLabel } from '@/types';
 
@@ -39,6 +45,7 @@ export type LiveSessionState = {
 	bufferFillSamples: number;
 	bufferTargetSamples: number;
 	spoofThreshold: number;
+	realThreshold: number;
 	framesSeen: number;
 	lastRtf: number | null;
 	lastLatencyMs: number | null;
@@ -54,6 +61,7 @@ const CHUNK_HISTORY_MAX = 48;
 const CHART_FLUSH_MS = 250;
 
 export function useLiveSession(): LiveSessionState {
+	const { ensureReady } = useBackendHealth();
 	const [phase, setPhase] = useState<LivePhase>('idle');
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [sessionScore, setSessionScore] = useState(0);
@@ -63,6 +71,7 @@ export function useLiveSession(): LiveSessionState {
 	const [bufferFillSamples, setBufferFillSamples] = useState(0);
 	const [bufferTargetSamples, setBufferTargetSamples] = useState(0);
 	const [spoofThreshold, setSpoofThreshold] = useState(0.5);
+	const [realThreshold, setRealThreshold] = useState(0.4);
 	const [framesSeen, setFramesSeen] = useState(0);
 	const [lastRtf, setLastRtf] = useState<number | null>(null);
 	const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
@@ -73,6 +82,7 @@ export function useLiveSession(): LiveSessionState {
 	const outputRef = useRef<OutputSocket | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
 	const spoofThresholdRef = useRef(0.5);
+	const realThresholdRef = useRef(0.4);
 	const stoppingRef = useRef(false);
 	const hasScoredRef = useRef(false);
 	const chunkHistoryRef = useRef<number[]>([]);
@@ -156,13 +166,8 @@ export function useLiveSession(): LiveSessionState {
 	const handleWsClose = useCallback(
 		(err: WsCloseError | null) => {
 			if (stoppingRef.current || !err) return;
-			if (err.isAlreadyAttached) {
-				setError('Another client is attached to this session channel.');
-			} else if (err.isSessionNotFound) {
-				setError('Session not found on server.');
-			} else {
-				setError(err.message);
-			}
+			void hapticError();
+			setError(formatApiError(err));
 			teardown();
 		},
 		[teardown],
@@ -170,11 +175,14 @@ export function useLiveSession(): LiveSessionState {
 
 	const start = useCallback(async () => {
 		if (phase !== 'idle') return;
+		void hapticLight();
 		setError(null);
 		setPhase('connecting');
 		hasScoredRef.current = false;
 
 		try {
+			await ensureReady();
+
 			const sessionDefaults = await loadSessionDefaults();
 			setDefaults(sessionDefaults);
 
@@ -195,6 +203,8 @@ export function useLiveSession(): LiveSessionState {
 				chunk_duration_s: sessionDefaults.chunk_duration_s,
 				ema_alpha: sessionDefaults.ema_alpha,
 				spoof_threshold: sessionDefaults.spoof_threshold,
+				vad_mode: sessionDefaults.vad_mode,
+				vad_frame_ms: sessionDefaults.vad_frame_ms,
 			});
 
 			const id = created.session_id;
@@ -202,6 +212,8 @@ export function useLiveSession(): LiveSessionState {
 			setSessionId(id);
 			setSpoofThreshold(created.config.spoof_threshold);
 			spoofThresholdRef.current = created.config.spoof_threshold;
+			setRealThreshold(sessionDefaults.real_threshold);
+			realThresholdRef.current = sessionDefaults.real_threshold;
 			setBufferTargetSamples(created.config.chunk_samples);
 
 			await new Promise<void>((resolve, reject) => {
@@ -229,12 +241,17 @@ export function useLiveSession(): LiveSessionState {
 							setPhase('active');
 							setSessionScore(msg.session_score);
 							setChunkIdx(msg.chunk_idx);
-							setLabel(
-								deriveSessionLabel(
-									msg.session_score,
-									spoofThresholdRef.current,
-								),
+							const nextLabel = deriveSessionLabel(
+								msg.session_score,
+								spoofThresholdRef.current,
+								realThresholdRef.current,
 							);
+							setLabel((prev) => {
+								if (prev !== 'SPOOF' && nextLabel === 'SPOOF') {
+									void hapticWarning();
+								}
+								return nextLabel;
+							});
 							setLastRtf(msg.rtf);
 							setLastLatencyMs(msg.latency_ms);
 							chunkHistoryRef.current = [
@@ -243,9 +260,8 @@ export function useLiveSession(): LiveSessionState {
 							].slice(-CHUNK_HISTORY_MAX);
 							flushDerivedMetrics();
 						} else if (msg.type === 'error') {
-							setError(
-								msg.message || `Inference error: ${msg.code}`,
-							);
+							void hapticError();
+							setError(formatWsOutputError(msg.code, msg.message));
 							teardown();
 						}
 					},
@@ -262,6 +278,10 @@ export function useLiveSession(): LiveSessionState {
 						if (msg.type === 'ack') {
 							framesSeenRef.current = msg.frame_idx;
 							flushDerivedMetrics();
+						} else if (msg.type === 'error') {
+							// Soft error — socket stays open (docs/api.md).
+							void hapticWarning();
+							setError(formatWsFramesError(msg.code));
 						}
 					},
 					onClose: handleWsClose,
@@ -271,13 +291,15 @@ export function useLiveSession(): LiveSessionState {
 
 			await audioStream.start();
 		} catch (e) {
+			void hapticError();
 			setPhase('idle');
 			setError(formatApiError(e));
 			await teardown();
 		}
-	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics]);
+	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics, ensureReady]);
 
 	const stop = useCallback(async () => {
+		void hapticMedium();
 		setError(null);
 		await teardown();
 	}, [teardown]);
@@ -301,6 +323,7 @@ export function useLiveSession(): LiveSessionState {
 		bufferFillSamples,
 		bufferTargetSamples,
 		spoofThreshold,
+		realThreshold,
 		framesSeen,
 		lastRtf,
 		lastLatencyMs,

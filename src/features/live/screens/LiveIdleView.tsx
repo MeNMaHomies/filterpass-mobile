@@ -1,5 +1,5 @@
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
-import { Card, Eyebrow, StatusBadge } from '@/components';
+import { Card, ErrorBanner, Eyebrow, StatusBadge } from '@/components';
 import { MicButton } from '../components/MicButton';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import type { SessionDefaults } from '@/features/settings/sessionDefaults';
@@ -12,6 +12,8 @@ type LiveIdleViewProps = {
 	connectionStatus?: ConnectionStatus;
 	defaults?: SessionDefaults | null;
 	error?: string | null;
+	onClearError?: () => void;
+	busy?: boolean;
 };
 
 export function LiveIdleView({
@@ -19,41 +21,79 @@ export function LiveIdleView({
 	connectionStatus = 'Disconnected',
 	defaults,
 	error,
+	onClearError,
+	busy = false,
 }: LiveIdleViewProps) {
-	const scrollProps = useScrollScreenProps();
+	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
 	const badgeVariant =
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 
 	return (
 		<ScrollView
 			style={styles.fill}
-			contentContainerStyle={styles.scroll}
+			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
 			showsVerticalScrollIndicator={false}
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}
 		>
+			{error ? (
+				<ErrorBanner
+					message={error}
+					onRetry={onClearError}
+					retryLabel="Dismiss"
+				/>
+			) : null}
+
 			<View style={styles.center}>
-				<MicButton onPress={onMicPress} />
-				<Text style={styles.hint}>Tap to start listening</Text>
+				<MicButton onPress={onMicPress} busy={busy} disabled={busy} />
+				<Text style={styles.hint}>
+					{busy ? 'Connecting…' : 'Tap to start listening'}
+				</Text>
 				<View style={styles.badgeWrap}>
-					<StatusBadge label={connectionStatus} variant={badgeVariant} />
+					<StatusBadge
+						label={connectionStatus}
+						variant={badgeVariant}
+						live={busy}
+					/>
 				</View>
-				{error ? <Text style={styles.error}>{error}</Text> : null}
 			</View>
 
 			<Card style={styles.defaultsCard}>
 				<Eyebrow>Next session defaults</Eyebrow>
 				<View style={styles.grid}>
 					{[
-						['Sample rate', defaults ? `${defaults.sample_rate / 1000} kHz` : '16 kHz'],
-						['Chunk', defaults ? `${defaults.chunk_duration_s} s` : '0.5 s'],
 						[
-							'Threshold',
-							defaults ? defaults.spoof_threshold.toFixed(2) : '0.50',
+							'Sample rate',
+							defaults ? `${defaults.sample_rate / 1000} kHz` : '16 kHz',
+							'Audio capture rate',
 						],
-						['EMA α', defaults ? defaults.ema_alpha.toFixed(2) : '0.30'],
-					].map(([k, v]) => (
-						<View key={k} style={styles.gridItem}>
+						[
+							'Chunk',
+							defaults ? `${defaults.chunk_duration_s} s` : '0.5 s',
+							'Audio length per score',
+						],
+						[
+							'Real below',
+							defaults ? defaults.real_threshold.toFixed(2) : '0.40',
+							'Scores below this are REAL',
+						],
+						[
+							'Spoof at',
+							defaults ? defaults.spoof_threshold.toFixed(2) : '0.60',
+							'Scores at or above are SPOOF',
+						],
+						[
+							'Smoothing',
+							defaults ? defaults.ema_alpha.toFixed(2) : '0.30',
+							'How fast the score reacts',
+						],
+					].map(([k, v, hint]) => (
+						<View
+							key={k}
+							style={styles.gridItem}
+							accessible
+							accessibilityLabel={`${k}: ${v}. ${hint}`}
+						>
 							<Text style={styles.gridLabel}>{k}</Text>
 							<Text style={styles.gridValue}>{v}</Text>
 						</View>
@@ -86,14 +126,6 @@ const styles = StyleSheet.create({
 	},
 	badgeWrap: {
 		marginTop: 18,
-	},
-	error: {
-		marginTop: 12,
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.destructive,
-		textAlign: 'center',
-		paddingHorizontal: 24,
 	},
 	defaultsCard: {
 		marginTop: 28,
