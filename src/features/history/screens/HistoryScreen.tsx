@@ -1,15 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 import {
 	View,
-	Text,
 	TextInput,
 	Pressable,
 	StyleSheet,
-	ActivityIndicator,
 	RefreshControl,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { RefreshCw } from 'lucide-react-native';
+import { EmptyState, ErrorBanner, ScreenLoader } from '@/components';
 import { HistorySessionRow } from '../components/HistorySessionRow';
 import { useHistorySessions } from '../hooks/useHistorySessions';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
@@ -61,20 +60,36 @@ export function HistoryScreen() {
 						style={styles.search}
 						value={query}
 						onChangeText={setQuery}
+						accessibilityLabel="Search sessions"
+						autoCapitalize="none"
+						autoCorrect={false}
 					/>
-					<Pressable style={styles.refreshBtn} onPress={refresh}>
+					<Pressable
+						style={({ pressed }) => [
+							styles.refreshBtn,
+							pressed && styles.refreshPressed,
+						]}
+						onPress={refresh}
+						accessibilityRole="button"
+						accessibilityLabel="Refresh history"
+					>
 						<RefreshCw size={16} color={colors.muted} strokeWidth={2} />
 					</Pressable>
 				</View>
 
-				{loading && sessions.length === 0 ? (
-					<ActivityIndicator color={colors.primary} />
-				) : null}
+				{loading && sessions.length === 0 ? <ScreenLoader /> : null}
 
-				{error ? <Text style={styles.error}>{error}</Text> : null}
+				{error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
 
-				{!loading && filtered.length === 0 ? (
-					<Text style={styles.empty}>No sessions found</Text>
+				{!loading && !error && filtered.length === 0 ? (
+					<EmptyState
+						title={query.trim() ? 'No matches' : 'No sessions found'}
+						description={
+							query.trim()
+								? 'Try a different session id.'
+								: 'Completed live sessions will appear here.'
+						}
+					/>
 				) : null}
 			</View>
 		),
@@ -83,12 +98,7 @@ export function HistoryScreen() {
 
 	const listFooter = useMemo(() => {
 		if (!loadingMore) return null;
-		return (
-			<ActivityIndicator
-				color={colors.primary}
-				style={styles.footerLoader}
-			/>
-		);
+		return <ScreenLoader label="Loading more sessions" />;
 	}, [loadingMore]);
 
 	return (
@@ -141,6 +151,7 @@ const styles = StyleSheet.create({
 		borderCurve: 'continuous',
 		paddingHorizontal: 14,
 		paddingVertical: 11,
+		minHeight: 44,
 		color: colors.foreground,
 		fontFamily: fontFamilies.sans,
 		fontSize: 14,
@@ -156,19 +167,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
-	error: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.destructive,
-		marginBottom: 12,
-	},
-	empty: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.muted2,
-		marginBottom: 8,
-	},
-	footerLoader: {
-		marginVertical: 16,
+	refreshPressed: {
+		opacity: 0.75,
 	},
 });

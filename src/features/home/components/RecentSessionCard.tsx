@@ -20,7 +20,11 @@ export const RecentSessionCard = memo(function RecentSessionCard({
 	}, [onPress, session.sessionId]);
 
 	return (
-		<Pressable onPress={handlePress}>
+		<Pressable
+			onPress={handlePress}
+			accessibilityRole="button"
+			accessibilityLabel={`Open session ${session.id}, score ${session.score.toFixed(2)}, ${session.label}`}
+		>
 			<Card style={styles.recentCard}>
 				<Text style={styles.recentId}>{session.id}</Text>
 				<Text

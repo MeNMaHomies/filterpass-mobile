@@ -3,6 +3,7 @@ import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs/types';
 import { Home, Mic, History, Settings } from 'lucide-react-native';
+import { hapticLight } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -27,6 +28,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 
 	const navigateTo = useCallback(
 		(route: TabRoute, isFocused: boolean) => {
+			void hapticLight();
 			const event = navigation.emit({
 				type: 'tabPress',
 				target: route.key,
@@ -57,7 +59,12 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
 						<Pressable
 							key={route.key}
 							onPress={() => navigateTo(route, isFocused)}
-							style={[styles.tab, isFocused ? styles.tabActive : null]}
+							style={({ pressed }) => [
+								styles.tab,
+								isFocused ? styles.tabActive : null,
+								pressed && styles.tabPressed,
+							]}
+							hitSlop={4}
 							accessibilityRole="button"
 							accessibilityState={isFocused ? { selected: true } : {}}
 							accessibilityLabel={label}
@@ -110,12 +117,16 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		gap: 4,
 		paddingVertical: 8,
+		minHeight: 44,
 		borderRadius: radius.navItem,
 		borderCurve: 'continuous',
 		position: 'relative',
 	},
 	tabActive: {
 		backgroundColor: colors.tabActive,
+	},
+	tabPressed: {
+		opacity: 0.75,
 	},
 	tabLabel: {
 		fontFamily: fontFamilies.sansMedium,

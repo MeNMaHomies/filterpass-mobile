@@ -7,6 +7,7 @@ export type StatusVariant = 'REAL' | 'SPOOF' | 'WARMUP' | 'IDLE';
 type StatusBadgeProps = {
 	label: string;
 	variant: StatusVariant;
+	live?: boolean;
 };
 
 const variantStyles: Record<
@@ -27,10 +28,13 @@ const variantStyles: Record<
 	},
 };
 
-export function StatusBadge({ label, variant }: StatusBadgeProps) {
+export function StatusBadge({ label, variant, live = false }: StatusBadgeProps) {
 	const s = variantStyles[variant];
 	return (
 		<Text
+			accessibilityRole="text"
+			accessibilityLabel={`Status: ${label}`}
+			accessibilityLiveRegion={live ? 'polite' : undefined}
 			style={[
 				styles.badge,
 				{ backgroundColor: s.bg, borderColor: s.border, color: s.color },

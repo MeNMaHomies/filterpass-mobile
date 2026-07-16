@@ -22,6 +22,7 @@ import {
 	formatWsFramesError,
 	formatWsOutputError,
 } from '@/lib/apiError';
+import { hapticError, hapticLight, hapticMedium, hapticWarning } from '@/lib/haptics';
 import { throttle } from '@/lib/throttle';
 import type { SessionLabel } from '@/types';
 
@@ -160,6 +161,7 @@ export function useLiveSession(): LiveSessionState {
 	const handleWsClose = useCallback(
 		(err: WsCloseError | null) => {
 			if (stoppingRef.current || !err) return;
+			void hapticError();
 			setError(formatApiError(err));
 			teardown();
 		},
@@ -168,6 +170,7 @@ export function useLiveSession(): LiveSessionState {
 
 	const start = useCallback(async () => {
 		if (phase !== 'idle') return;
+		void hapticLight();
 		setError(null);
 		setPhase('connecting');
 		hasScoredRef.current = false;
@@ -227,12 +230,16 @@ export function useLiveSession(): LiveSessionState {
 							setPhase('active');
 							setSessionScore(msg.session_score);
 							setChunkIdx(msg.chunk_idx);
-							setLabel(
-								deriveSessionLabel(
-									msg.session_score,
-									spoofThresholdRef.current,
-								),
+							const nextLabel = deriveSessionLabel(
+								msg.session_score,
+								spoofThresholdRef.current,
 							);
+							setLabel((prev) => {
+								if (prev !== 'SPOOF' && nextLabel === 'SPOOF') {
+									void hapticWarning();
+								}
+								return nextLabel;
+							});
 							setLastRtf(msg.rtf);
 							setLastLatencyMs(msg.latency_ms);
 							chunkHistoryRef.current = [
@@ -241,6 +248,7 @@ export function useLiveSession(): LiveSessionState {
 							].slice(-CHUNK_HISTORY_MAX);
 							flushDerivedMetrics();
 						} else if (msg.type === 'error') {
+							void hapticError();
 							setError(formatWsOutputError(msg.code, msg.message));
 							teardown();
 						}
@@ -260,6 +268,7 @@ export function useLiveSession(): LiveSessionState {
 							flushDerivedMetrics();
 						} else if (msg.type === 'error') {
 							// Soft error — socket stays open (docs/api.md).
+							void hapticWarning();
 							setError(formatWsFramesError(msg.code));
 						}
 					},
@@ -270,6 +279,7 @@ export function useLiveSession(): LiveSessionState {
 
 			await audioStream.start();
 		} catch (e) {
+			void hapticError();
 			setPhase('idle');
 			setError(formatApiError(e));
 			await teardown();
@@ -277,6 +287,7 @@ export function useLiveSession(): LiveSessionState {
 	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics]);
 
 	const stop = useCallback(async () => {
+		void hapticMedium();
 		setError(null);
 		await teardown();
 	}, [teardown]);

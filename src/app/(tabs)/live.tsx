@@ -1,5 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { AppShell, StatusBadge } from '@/components';
+import { AppShell } from '@/components';
 import {
 	LiveActiveView,
 	LiveIdleView,
@@ -7,8 +6,6 @@ import {
 	useLiveSession,
 } from '@/features/live';
 import { shortSessionId } from '@/lib/formatSession';
-import { colors, spacing } from '@/theme/tokens';
-import { fontFamilies } from '@/theme/typography';
 
 export default function LiveRoute() {
 	const live = useLiveSession();
@@ -19,68 +16,42 @@ export default function LiveRoute() {
 			: undefined;
 
 	return (
-		<AppShell
-			title="Live Monitor"
-			subtitle={subtitle}
-			headerRight={
-				live.phase === 'active' || live.phase === 'warmup' ? (
-					<StatusBadge
-						label={
-							live.phase === 'warmup' ? 'Warming up' : 'Live'
-						}
-						variant={live.phase === 'warmup' ? 'WARMUP' : 'REAL'}
-					/>
-				) : null
-			}
-		>
+		<AppShell title="Live Monitor" subtitle={subtitle}>
 			{live.phase === 'idle' || live.phase === 'connecting' ? (
 				<LiveIdleView
 					onMicPress={live.start}
 					connectionStatus={live.connectionStatus}
 					defaults={live.defaults}
 					error={live.error}
+					onClearError={live.clearError}
+					busy={live.phase === 'connecting'}
 				/>
 			) : null}
 
 			{live.phase === 'active' ? (
-				<>
-					{live.error ? (
-						<View style={styles.errorBanner}>
-							<Text style={styles.errorText}>{live.error}</Text>
-						</View>
-					) : null}
-					<LiveActiveView
-						sessionScore={live.sessionScore}
-						chunkIdx={live.chunkIdx}
-						label={live.label}
-						chunkHistory={live.chunkHistory}
-						framesSeen={live.framesSeen}
-						lastRtf={live.lastRtf}
-						lastLatencyMs={live.lastLatencyMs}
-						onStop={live.stop}
-					/>
-				</>
+				<LiveActiveView
+					sessionScore={live.sessionScore}
+					chunkIdx={live.chunkIdx}
+					label={live.label}
+					chunkHistory={live.chunkHistory}
+					framesSeen={live.framesSeen}
+					lastRtf={live.lastRtf}
+					lastLatencyMs={live.lastLatencyMs}
+					error={live.error}
+					onStop={live.stop}
+					onClearError={live.clearError}
+				/>
 			) : null}
 
 			{live.phase === 'warmup' ? (
 				<LiveWarmupView
 					bufferFillSamples={live.bufferFillSamples}
 					bufferTargetSamples={live.bufferTargetSamples}
+					error={live.error}
 					onCancel={live.stop}
+					onClearError={live.clearError}
 				/>
 			) : null}
 		</AppShell>
 	);
 }
-
-const styles = StyleSheet.create({
-	errorBanner: {
-		paddingHorizontal: spacing.screenX,
-		paddingTop: 8,
-	},
-	errorText: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.destructive,
-	},
-});

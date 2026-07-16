@@ -1,9 +1,9 @@
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import {
 	Button,
 	Card,
 	ChunkSparkline,
+	ErrorBanner,
 	Eyebrow,
 	LiveDot,
 	ScoreGauge,
@@ -22,7 +22,9 @@ type LiveActiveViewProps = {
 	framesSeen?: number;
 	lastRtf?: number | null;
 	lastLatencyMs?: number | null;
+	error?: string | null;
 	onStop?: () => void;
+	onClearError?: () => void;
 };
 
 export function LiveActiveView({
@@ -33,7 +35,9 @@ export function LiveActiveView({
 	framesSeen = 0,
 	lastRtf = null,
 	lastLatencyMs = null,
+	error,
 	onStop,
+	onClearError,
 }: LiveActiveViewProps) {
 	const scrollProps = useScrollScreenProps();
 
@@ -44,44 +48,27 @@ export function LiveActiveView({
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}
 		>
+			{error ? (
+				<ErrorBanner
+					message={error}
+					onRetry={onClearError}
+					retryLabel="Dismiss"
+				/>
+			) : null}
+
 			<Card glow style={styles.gaugeCard}>
 				<View style={styles.gaugeHeader}>
-					<StatusBadge label={label} variant={label} />
+					<StatusBadge label={label} variant={label} live />
 					<View style={styles.chunkRow}>
 						<LiveDot />
 						<Text style={styles.chunkLabel}>chunk {chunkIdx}</Text>
 					</View>
 				</View>
-				<ScoreGauge score={sessionScore} />
+				<ScoreGauge score={sessionScore} label="session score" />
 			</Card>
 
 			<Card style={styles.section}>
-				<Eyebrow>Waveform</Eyebrow>
-				<Svg
-					width="100%"
-					height={44}
-					viewBox="0 0 300 44"
-					preserveAspectRatio="none"
-					style={styles.waveform}
-				>
-					<Path
-						d="M0,22 Q30,12 60,22 T120,22 T180,22 T240,22 T300,22"
-						fill="none"
-						stroke={colors.primary}
-						strokeWidth={1.5}
-						opacity={0.3}
-					/>
-					<Path
-						d="M0,22 Q15,32 30,22 T60,22 T90,14 T120,24 T150,20 T180,16 T210,22 T240,20 T270,18 T300,20"
-						fill="none"
-						stroke={colors.primary}
-						strokeWidth={2}
-					/>
-				</Svg>
-			</Card>
-
-			<Card style={styles.section}>
-				<Eyebrow>Chunk history</Eyebrow>
+				<Eyebrow>Score history</Eyebrow>
 				{chunkHistory.length > 0 ? (
 					<ChunkSparkline chunks={chunkHistory} />
 				) : (
@@ -91,16 +78,30 @@ export function LiveActiveView({
 
 			<View style={styles.metrics}>
 				{[
-					['RTF', lastRtf !== null ? lastRtf.toFixed(2) : '—'],
-					['Frames', framesSeen.toLocaleString()],
+					[
+						'Speed',
+						lastRtf !== null ? lastRtf.toFixed(2) : '—',
+						'Real-time factor — lower is faster than real-time',
+					],
+					[
+						'Frames',
+						framesSeen.toLocaleString(),
+						'Audio frames sent to the detector',
+					],
 					[
 						'Latency',
 						lastLatencyMs !== null
 							? `${Math.round(lastLatencyMs)}ms`
 							: '—',
+						'Model inference time for the last chunk',
 					],
-				].map(([k, v]) => (
-					<View key={k} style={styles.metric}>
+				].map(([k, v, hint]) => (
+					<View
+						key={k}
+						style={styles.metric}
+						accessible
+						accessibilityLabel={`${k}: ${v}. ${hint}`}
+					>
 						<Text style={styles.metricLabel}>{k}</Text>
 						<Text style={styles.metricValue}>{v}</Text>
 					</View>
@@ -112,6 +113,7 @@ export function LiveActiveView({
 				label="Stop session"
 				style={styles.stopBtn}
 				onPress={onStop}
+				accessibilityHint="Ends the live detection session"
 			/>
 		</ScrollView>
 	);
@@ -149,9 +151,6 @@ const styles = StyleSheet.create({
 		paddingVertical: 12,
 		marginBottom: 10,
 	},
-	waveform: {
-		marginTop: 6,
-	},
 	empty: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
@@ -172,6 +171,8 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		borderWidth: 1,
 		borderColor: colors.border,
+		minHeight: 52,
+		justifyContent: 'center',
 	},
 	metricLabel: {
 		fontFamily: fontFamilies.sans,

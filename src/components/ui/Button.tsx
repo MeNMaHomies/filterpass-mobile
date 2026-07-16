@@ -23,8 +23,11 @@ export function Button({
 	label,
 	style,
 	disabled,
+	accessibilityLabel,
 	...props
 }: ButtonProps) {
+	const a11yLabel = accessibilityLabel ?? label;
+
 	if (variant === 'primary') {
 		return (
 			<Pressable
@@ -35,6 +38,9 @@ export function Button({
 					style,
 				]}
 				disabled={disabled}
+				accessibilityRole="button"
+				accessibilityLabel={a11yLabel}
+				accessibilityState={{ disabled: !!disabled }}
 				{...props}
 			>
 				<LinearGradient
@@ -66,6 +72,9 @@ export function Button({
 				style,
 			]}
 			disabled={disabled}
+			accessibilityRole="button"
+			accessibilityLabel={a11yLabel}
+			accessibilityState={{ disabled: !!disabled }}
 			{...props}
 		>
 			<Text
@@ -84,19 +93,21 @@ export function Button({
 
 const styles = StyleSheet.create({
 	base: {
-		height: 36,
+		minHeight: 44,
 		borderRadius: radius.button,
 		overflow: 'hidden',
 		justifyContent: 'center',
 		alignItems: 'center',
+		paddingVertical: 10,
 	},
 	primaryOuter: {
-		height: 36,
+		minHeight: 44,
 		borderRadius: radius.pill,
 		overflow: 'hidden',
 	},
 	primaryGradient: {
 		flex: 1,
+		minHeight: 44,
 		justifyContent: 'center',
 		alignItems: 'center',
 		paddingHorizontal: 16,

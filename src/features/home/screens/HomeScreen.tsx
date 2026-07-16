@@ -1,7 +1,13 @@
 import { useCallback } from 'react';
-import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+	ScrollView,
+	View,
+	Text,
+	StyleSheet,
+	RefreshControl,
+} from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import { Button, Card, Eyebrow } from '@/components';
+import { Button, Card, EmptyState, ErrorBanner, Eyebrow } from '@/components';
 import { KpiGrid } from '../components/KpiGrid';
 import { RecentSessionCard } from '../components/RecentSessionCard';
 import { useHomeOverview } from '../hooks/useHomeOverview';
@@ -30,18 +36,22 @@ export function HomeScreen() {
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			refreshControl={
+				<RefreshControl
+					refreshing={loading && kpis.length > 0}
+					onRefresh={refresh}
+					tintColor={colors.primary}
+				/>
+			}
 			{...scrollProps}
 		>
 			{loading && kpis.length === 0 ? (
-				<ActivityIndicator color={colors.primary} style={styles.loader} />
+				<Text style={styles.loadingHint} accessibilityLabel="Loading overview">
+					Loading overview…
+				</Text>
 			) : null}
 
-			{error ? (
-				<Card style={styles.errorCard}>
-					<Text style={styles.errorText}>{error}</Text>
-					<Button variant="ghost" label="Retry" onPress={refresh} />
-				</Card>
-			) : null}
+			{error ? <ErrorBanner message={error} onRetry={refresh} /> : null}
 
 			{kpis.length > 0 ? <KpiGrid items={kpis} /> : null}
 
@@ -61,9 +71,18 @@ export function HomeScreen() {
 
 			<Eyebrow>Recent sessions</Eyebrow>
 			{recentSessions.length === 0 && !loading ? (
-				<Text style={styles.empty}>No sessions yet</Text>
+				<EmptyState
+					title="No sessions yet"
+					description="Run a live detection to see recent results here."
+					actionLabel="Start session"
+					onAction={openLive}
+				/>
 			) : (
-				<View style={styles.recentRow}>
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={styles.recentRow}
+				>
 					{recentSessions.map((s) => (
 						<RecentSessionCard
 							key={s.sessionId}
@@ -71,7 +90,7 @@ export function HomeScreen() {
 							onPress={openSession}
 						/>
 					))}
-				</View>
+				</ScrollView>
 			)}
 		</ScrollView>
 	);
@@ -82,18 +101,11 @@ const styles = StyleSheet.create({
 		paddingHorizontal: spacing.screenX,
 		paddingTop: spacing.screenY,
 	},
-	loader: {
-		marginBottom: 14,
-	},
-	errorCard: {
-		padding: 14,
-		marginBottom: 14,
-		gap: 10,
-	},
-	errorText: {
+	loadingHint: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
-		color: colors.destructive,
+		color: colors.muted2,
+		marginBottom: 14,
 	},
 	ctaCard: {
 		padding: 16,
@@ -115,18 +127,13 @@ const styles = StyleSheet.create({
 	},
 	ctaButton: {
 		width: '100%',
-		height: 40,
-	},
-	empty: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.muted2,
-		paddingTop: 10,
+		minHeight: 44,
 	},
 	recentRow: {
 		flexDirection: 'row',
 		gap: 10,
 		paddingTop: 10,
 		paddingBottom: 4,
+		paddingRight: spacing.screenX,
 	},
 });

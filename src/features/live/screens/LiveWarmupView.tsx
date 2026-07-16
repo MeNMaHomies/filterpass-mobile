@@ -1,6 +1,12 @@
+import { useEffect } from 'react';
 import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from 'react-native-reanimated';
 import { Square } from 'lucide-react-native';
-import { Card, Eyebrow, StatusBadge } from '@/components';
+import { Card, ErrorBanner, Eyebrow, StatusBadge } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -8,13 +14,17 @@ import { fontFamilies } from '@/theme/typography';
 type LiveWarmupViewProps = {
 	bufferFillSamples?: number;
 	bufferTargetSamples?: number;
+	error?: string | null;
 	onCancel?: () => void;
+	onClearError?: () => void;
 };
 
 export function LiveWarmupView({
 	bufferFillSamples = 0,
 	bufferTargetSamples = 1,
+	error,
 	onCancel,
+	onClearError,
 }: LiveWarmupViewProps) {
 	const scrollProps = useScrollScreenProps();
 	const fill =
@@ -24,6 +34,15 @@ export function LiveWarmupView({
 					Math.round((bufferFillSamples / bufferTargetSamples) * 100),
 				)
 			: 0;
+	const fillProgress = useSharedValue(fill);
+
+	useEffect(() => {
+		fillProgress.set(withTiming(fill, { duration: 220 }));
+	}, [fill, fillProgress]);
+
+	const fillStyle = useAnimatedStyle(() => ({
+		width: `${fillProgress.get()}%`,
+	}));
 
 	return (
 		<ScrollView
@@ -32,12 +51,24 @@ export function LiveWarmupView({
 			keyboardShouldPersistTaps="handled"
 			{...scrollProps}
 		>
-			<StatusBadge label="Warming up" variant="WARMUP" />
+			{error ? (
+				<ErrorBanner
+					message={error}
+					onRetry={onClearError}
+					retryLabel="Dismiss"
+				/>
+			) : null}
 
-			<View style={styles.progressBlock}>
+			<StatusBadge label="Warming up" variant="WARMUP" live />
+
+			<View
+				style={styles.progressBlock}
+				accessible
+				accessibilityLabel={`Buffer fill ${fill} percent`}
+			>
 				<Text style={styles.progressLabel}>Buffer fill · {fill}%</Text>
 				<View style={styles.track}>
-					<View style={[styles.fill, { width: `${fill}%` }]} />
+					<Animated.View style={[styles.fill, fillStyle]} />
 				</View>
 				<Text style={styles.progressMeta}>
 					{bufferFillSamples.toLocaleString()} /{' '}
@@ -54,7 +85,16 @@ export function LiveWarmupView({
 			</Card>
 
 			<View style={styles.cancelBlock}>
-				<Pressable onPress={onCancel} style={styles.cancelButton}>
+				<Pressable
+					onPress={onCancel}
+					style={({ pressed }) => [
+						styles.cancelButton,
+						pressed && styles.cancelPressed,
+					]}
+					accessibilityRole="button"
+					accessibilityLabel="Cancel session"
+					accessibilityHint="Stops warmup and returns to idle"
+				>
 					<Square
 						size={18}
 						color={colors.destructive}
@@ -127,6 +167,9 @@ const styles = StyleSheet.create({
 		borderColor: colors.destructive,
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	cancelPressed: {
+		opacity: 0.85,
 	},
 	cancelLabel: {
 		fontFamily: fontFamilies.sans,

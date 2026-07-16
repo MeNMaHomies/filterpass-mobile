@@ -1,11 +1,5 @@
 import { useMemo } from 'react';
-import {
-	ScrollView,
-	View,
-	Text,
-	StyleSheet,
-	ActivityIndicator,
-} from 'react-native';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Svg, {
 	Path,
 	Line,
@@ -15,7 +9,13 @@ import Svg, {
 	LinearGradient,
 	Stop,
 } from 'react-native-svg';
-import { Card, Eyebrow, StatusBadge } from '@/components';
+import {
+	Card,
+	ErrorBanner,
+	Eyebrow,
+	ScreenLoader,
+	StatusBadge,
+} from '@/components';
 import { useSessionReport } from '../hooks/useSessionReport';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { scoreColor } from '@/lib/scoreColor';
@@ -47,8 +47,16 @@ function buildScorePath(
 
 export function ReportScreen({ sessionId }: ReportScreenProps) {
 	const scrollProps = useScrollScreenProps();
-	const { duration, label, chunkCount, timeline, inferences, loading, error } =
-		useSessionReport(sessionId);
+	const {
+		duration,
+		label,
+		chunkCount,
+		timeline,
+		inferences,
+		loading,
+		error,
+		refresh,
+	} = useSessionReport(sessionId);
 
 	const scores = useMemo(
 		() => inferences.map((e) => e.session_score),
@@ -74,6 +82,13 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 		return { realCount, realPct };
 	}, [timeline]);
 
+	const scoreSummary = useMemo(() => {
+		if (scores.length === 0) return 'No score data';
+		const min = Math.min(...scores);
+		const max = Math.max(...scores);
+		return `Score ranged ${min.toFixed(2)} to ${max.toFixed(2)}. ${realStats.realPct}% of chunks labeled REAL.`;
+	}, [scores, realStats.realPct]);
+
 	const rtfBuckets = useMemo(() => {
 		if (inferences.length === 0) return [0, 0, 0, 0, 0, 0];
 		const max = Math.max(...inferences.map((e) => e.rtf), 0.01);
@@ -87,16 +102,15 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 	}, [inferences]);
 
 	if (loading) {
-		return (
-			<ActivityIndicator
-				color={colors.primary}
-				style={styles.loader}
-			/>
-		);
+		return <ScreenLoader label="Loading session report" />;
 	}
 
 	if (error) {
-		return <Text style={styles.error}>{error}</Text>;
+		return (
+			<View style={styles.errorWrap}>
+				<ErrorBanner message={error} onRetry={refresh} />
+			</View>
+		);
 	}
 
 	const labelDisplay = label === '—' ? '—' : label;
@@ -130,7 +144,11 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 				</View>
 			</Card>
 
-			<Card style={styles.section}>
+			<Card
+				style={styles.section}
+				accessible
+				accessibilityLabel={scoreSummary}
+			>
 				<Eyebrow>Score over time</Eyebrow>
 				{scores.length > 0 ? (
 					<Svg
@@ -138,6 +156,7 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 						height={100}
 						viewBox="0 0 320 100"
 						style={styles.chart}
+						accessible={false}
 					>
 						<Defs>
 							<LinearGradient id="scoreArea" x1="0" y1="0" x2="0" y2="1">
@@ -180,9 +199,13 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 			</Card>
 
 			<View style={styles.chartsRow}>
-				<Card style={styles.histCard}>
-					<Eyebrow>RTF dist.</Eyebrow>
-					<Svg width="100%" height={60} viewBox="0 0 120 60">
+				<Card
+					style={styles.histCard}
+					accessible
+					accessibilityLabel="Processing speed distribution across chunks"
+				>
+					<Eyebrow>Speed dist.</Eyebrow>
+					<Svg width="100%" height={60} viewBox="0 0 120 60" accessible={false}>
 						{rtfBuckets.map((h, i) => (
 							<Rect
 								key={i}
@@ -197,9 +220,13 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 						))}
 					</Svg>
 				</Card>
-				<Card style={styles.donutCard}>
+				<Card
+					style={styles.donutCard}
+					accessible
+					accessibilityLabel={`${realStats.realPct} percent of chunks labeled real`}
+				>
 					<Eyebrow>Labels</Eyebrow>
-					<Svg width={80} height={60} viewBox="0 0 80 60">
+					<Svg width={80} height={60} viewBox="0 0 80 60" accessible={false}>
 						<Circle
 							cx={40}
 							cy={30}
@@ -236,6 +263,8 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 								styles.timelineRow,
 								i < timeline.length - 1 && styles.timelineBorder,
 							]}
+							accessible
+							accessibilityLabel={`Chunk at ${c.time}, score ${c.score.toFixed(2)}, ${c.label}`}
 						>
 							<Text style={styles.timelineTime}>{c.time}</Text>
 							<Text
@@ -263,14 +292,9 @@ const styles = StyleSheet.create({
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 12,
 	},
-	loader: {
-		marginTop: 40,
-	},
-	error: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 13,
-		color: colors.destructive,
-		padding: spacing.screenX,
+	errorWrap: {
+		paddingHorizontal: spacing.screenX,
+		paddingTop: 16,
 	},
 	summaryCard: {
 		padding: 0,
@@ -312,6 +336,7 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		color: colors.muted2,
 		marginTop: 10,
+		padding: 16,
 	},
 	chartsRow: {
 		flexDirection: 'row',

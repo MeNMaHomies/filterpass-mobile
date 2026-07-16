@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Button, Card, Eyebrow } from '@/components';
+import { Button, Card, Eyebrow, ScreenLoader } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
+import { hapticSuccess } from '@/lib/haptics';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 import {
@@ -30,6 +31,7 @@ export function SettingsScreen() {
 
 	const handleSave = useCallback(async () => {
 		await saveSessionDefaults(defaults);
+		void hapticSuccess();
 		setSaved(true);
 		setTimeout(() => setSaved(false), 2000);
 	}, [defaults]);
@@ -40,7 +42,7 @@ export function SettingsScreen() {
 	}, []);
 
 	if (!loaded) {
-		return null;
+		return <ScreenLoader label="Loading settings" />;
 	}
 
 	return (
@@ -57,6 +59,16 @@ export function SettingsScreen() {
 				</Text>
 			</Card>
 
+			{saved ? (
+				<Text
+					style={styles.savedToast}
+					accessibilityLiveRegion="polite"
+					accessibilityRole="text"
+				>
+					Settings saved
+				</Text>
+			) : null}
+
 			<Eyebrow>Audio</Eyebrow>
 			<Card style={styles.group}>
 				{[
@@ -67,6 +79,8 @@ export function SettingsScreen() {
 					<View
 						key={k}
 						style={[styles.row, i < arr.length - 1 && styles.rowBorder]}
+						accessible
+						accessibilityLabel={`${k}: ${v}`}
 					>
 						<Text style={styles.rowLabel}>{k}</Text>
 						<Text style={styles.rowValue}>{v}</Text>
@@ -94,11 +108,21 @@ export function SettingsScreen() {
 						minimumTrackTintColor={colors.primary}
 						maximumTrackTintColor={colors.border}
 						thumbTintColor={colors.primary}
+						accessibilityLabel="Spoof threshold"
+						accessibilityValue={{
+							min: 0.1,
+							max: 0.9,
+							now: defaults.spoof_threshold,
+							text: defaults.spoof_threshold.toFixed(2),
+						}}
 					/>
+					<Text style={styles.sliderHint}>
+						Scores at or above this value are labeled SPOOF.
+					</Text>
 				</View>
 				<View style={styles.sliderBlock}>
 					<View style={styles.sliderHeader}>
-						<Text style={styles.rowLabel}>EMA α</Text>
+						<Text style={styles.rowLabel}>Score smoothing</Text>
 						<Text style={styles.sliderValue}>
 							{defaults.ema_alpha.toFixed(2)}
 						</Text>
@@ -114,7 +138,17 @@ export function SettingsScreen() {
 						minimumTrackTintColor={colors.primary}
 						maximumTrackTintColor={colors.border}
 						thumbTintColor={colors.primary}
+						accessibilityLabel="Score smoothing"
+						accessibilityValue={{
+							min: 0.1,
+							max: 0.9,
+							now: defaults.ema_alpha,
+							text: defaults.ema_alpha.toFixed(2),
+						}}
 					/>
+					<Text style={styles.sliderHint}>
+						Higher values make the session score react faster to new chunks.
+					</Text>
 				</View>
 			</Card>
 
@@ -157,6 +191,12 @@ const styles = StyleSheet.create({
 		color: colors.foreground,
 		fontFamily: fontFamilies.sansSemibold,
 	},
+	savedToast: {
+		fontFamily: fontFamilies.sansSemibold,
+		fontSize: 13,
+		color: colors.accent,
+		marginBottom: 12,
+	},
 	group: {
 		padding: 14,
 		marginBottom: 14,
@@ -166,6 +206,8 @@ const styles = StyleSheet.create({
 		flexDirection: 'row',
 		justifyContent: 'space-between',
 		paddingVertical: 10,
+		minHeight: 44,
+		alignItems: 'center',
 	},
 	rowBorder: {
 		borderBottomWidth: 1,
@@ -193,6 +235,13 @@ const styles = StyleSheet.create({
 		fontFamily: fontFamilies.mono,
 		fontSize: 14,
 		color: colors.primary,
+	},
+	sliderHint: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 12,
+		color: colors.muted2,
+		marginTop: 4,
+		lineHeight: 16,
 	},
 	actions: {
 		flexDirection: 'row',
