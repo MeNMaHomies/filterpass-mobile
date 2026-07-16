@@ -93,6 +93,12 @@ describe('formatApiError', () => {
 		).toContain('offline');
 	});
 
+	it('maps backend model not ready', () => {
+		expect(
+			formatApiError(new ApiError('Backend model not ready', 0, null, null)),
+		).toContain('model is not ready');
+	});
+
 	it('maps client invalid request body', () => {
 		const error = new ApiError('Invalid request body', 0, null, null);
 		expect(formatApiError(error)).toBe(

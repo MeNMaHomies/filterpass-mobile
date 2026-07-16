@@ -12,6 +12,7 @@ import {
 	type OutputSocket,
 	WsCloseError,
 } from '@/api/ws';
+import { useBackendHealth } from '@/features/health';
 import {
 	loadSessionDefaults,
 	type SessionDefaults,
@@ -59,6 +60,7 @@ const CHUNK_HISTORY_MAX = 48;
 const CHART_FLUSH_MS = 250;
 
 export function useLiveSession(): LiveSessionState {
+	const { ensureReady } = useBackendHealth();
 	const [phase, setPhase] = useState<LivePhase>('idle');
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [sessionScore, setSessionScore] = useState(0);
@@ -176,6 +178,8 @@ export function useLiveSession(): LiveSessionState {
 		hasScoredRef.current = false;
 
 		try {
+			await ensureReady();
+
 			const sessionDefaults = await loadSessionDefaults();
 			setDefaults(sessionDefaults);
 
@@ -284,7 +288,7 @@ export function useLiveSession(): LiveSessionState {
 			setError(formatApiError(e));
 			await teardown();
 		}
-	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics]);
+	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics, ensureReady]);
 
 	const stop = useCallback(async () => {
 		void hapticMedium();

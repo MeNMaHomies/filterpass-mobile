@@ -55,6 +55,7 @@ export function ErrorBanner({
 const styles = StyleSheet.create({
 	wrap: {
 		flexDirection: 'row',
+		marginTop: 10,
 		marginBottom: 14,
 		overflow: 'hidden',
 		borderRadius: radius.card,

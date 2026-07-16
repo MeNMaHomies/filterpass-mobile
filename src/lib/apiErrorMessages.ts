@@ -81,6 +81,11 @@ const CLIENT_ERROR_PREFIXES: { match: string; message: string }[] = [
 		match: 'No internet connection',
 		message: 'You appear to be offline. Check your connection and try again.',
 	},
+	{
+		match: 'Backend model not ready',
+		message:
+			'The detection service is online but the model is not ready yet. Try again in a moment.',
+	},
 ];
 
 const NETWORK_ERROR_PATTERNS = [

@@ -18,6 +18,7 @@ import {
 	GeistMono_600SemiBold,
 } from '@expo-google-fonts/geist-mono';
 import { colors } from '@/theme/tokens';
+import { BackendHealthProvider } from '@/features/health';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -45,17 +46,19 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
-				<BottomSheetModalProvider>
-					<StatusBar style="light" />
-					<Stack
-						screenOptions={{
-							headerShown: false,
-							contentStyle: { backgroundColor: colors.background },
-						}}
-					>
-						<Stack.Screen name="(tabs)" />
-					</Stack>
-				</BottomSheetModalProvider>
+				<BackendHealthProvider>
+					<BottomSheetModalProvider>
+						<StatusBar style="light" />
+						<Stack
+							screenOptions={{
+								headerShown: false,
+								contentStyle: { backgroundColor: colors.background },
+							}}
+						>
+							<Stack.Screen name="(tabs)" />
+						</Stack>
+					</BottomSheetModalProvider>
+				</BackendHealthProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);

@@ -4,7 +4,9 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eyebrow, OfflineBanner } from '@/components/ui';
+import { Eyebrow, ErrorBanner, OfflineBanner } from '@/components/ui';
+import { useBackendHealth } from '@/features/health';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { colors, spacing, titleGradient } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -24,6 +26,8 @@ export function AppShell({
 	children,
 }: AppShellProps) {
 	const insets = useSafeAreaInsets();
+	const { isOffline } = useNetworkStatus();
+	const { error: backendError, refresh: refreshBackend } = useBackendHealth();
 
 	return (
 		<View style={styles.root}>
@@ -81,6 +85,14 @@ export function AppShell({
 					style={styles.divider}
 				/>
 				<OfflineBanner />
+				{!isOffline && backendError ? (
+					<ErrorBanner
+						message={backendError}
+						onRetry={() => {
+							void refreshBackend();
+						}}
+					/>
+				) : null}
 			</View>
 			<View style={styles.content}>{children}</View>
 		</View>
