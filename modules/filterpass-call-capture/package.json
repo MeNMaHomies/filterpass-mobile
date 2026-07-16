@@ -1,0 +1,14 @@
+{
+	"name": "filterpass-call-capture",
+	"version": "0.1.0",
+	"description": "Android call audio capture for FilterPass showcase",
+	"main": "index.ts",
+	"types": "index.ts",
+	"license": "MIT",
+	"author": "FilterPass",
+	"peerDependencies": {
+		"expo": "*",
+		"react": "*",
+		"react-native": "*"
+	}
+}
