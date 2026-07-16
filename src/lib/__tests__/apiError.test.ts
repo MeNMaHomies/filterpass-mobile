@@ -84,6 +84,15 @@ describe('formatApiError', () => {
 		);
 	});
 
+	it('maps request timeout and offline errors', () => {
+		expect(
+			formatApiError(new ApiError('Request timed out', 0, null, null)),
+		).toContain('did not respond in time');
+		expect(
+			formatApiError(new ApiError('No internet connection', 0, null, null)),
+		).toContain('offline');
+	});
+
 	it('maps client invalid request body', () => {
 		const error = new ApiError('Invalid request body', 0, null, null);
 		expect(formatApiError(error)).toBe(

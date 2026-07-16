@@ -72,6 +72,15 @@ const CLIENT_ERROR_PREFIXES: { match: string; message: string }[] = [
 		message:
 			'Received an unexpected response from the server. Try updating the app.',
 	},
+	{
+		match: 'Request timed out',
+		message:
+			'The server did not respond in time. Check that the backend is running and try again.',
+	},
+	{
+		match: 'No internet connection',
+		message: 'You appear to be offline. Check your connection and try again.',
+	},
 ];
 
 const NETWORK_ERROR_PATTERNS = [
@@ -82,6 +91,9 @@ const NETWORK_ERROR_PATTERNS = [
 	'timed out',
 	'timeout',
 	'unable to resolve host',
+	'aborted',
+	'network error',
+	'internet',
 ];
 
 const WS_SOCKET_ERROR_MESSAGES: Record<string, string> = {

@@ -4,7 +4,7 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eyebrow } from '@/components/ui';
+import { Eyebrow, OfflineBanner } from '@/components/ui';
 import { colors, spacing, titleGradient } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -80,6 +80,7 @@ export function AppShell({
 					end={{ x: 1, y: 0 }}
 					style={styles.divider}
 				/>
+				<OfflineBanner />
 			</View>
 			<View style={styles.content}>{children}</View>
 		</View>
