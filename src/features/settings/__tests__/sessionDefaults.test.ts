@@ -44,6 +44,8 @@ describe('sessionDefaults', () => {
 				ema_alpha: 0.4,
 				real_threshold: 0.35,
 				spoof_threshold: 0.65,
+				vad_mode: 1,
+				vad_frame_ms: 20,
 			}),
 		);
 		await expect(loadSessionDefaults()).resolves.toEqual({
@@ -52,10 +54,12 @@ describe('sessionDefaults', () => {
 			ema_alpha: 0.4,
 			real_threshold: 0.35,
 			spoof_threshold: 0.65,
+			vad_mode: 1,
+			vad_frame_ms: 20,
 		});
 	});
 
-	it('backfills real_threshold from legacy spoof-only storage', async () => {
+	it('backfills real_threshold and VAD from legacy storage', async () => {
 		mockStorage.set(
 			'@filterpass/session_defaults',
 			JSON.stringify({
@@ -68,6 +72,8 @@ describe('sessionDefaults', () => {
 		const loaded = await loadSessionDefaults();
 		expect(loaded.spoof_threshold).toBe(0.6);
 		expect(loaded.real_threshold).toBeLessThan(loaded.spoof_threshold);
+		expect(loaded.vad_mode).toBe(2);
+		expect(loaded.vad_frame_ms).toBe(30);
 	});
 
 	it('falls back when stored JSON is invalid', async () => {

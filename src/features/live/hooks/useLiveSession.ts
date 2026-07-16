@@ -203,6 +203,8 @@ export function useLiveSession(): LiveSessionState {
 				chunk_duration_s: sessionDefaults.chunk_duration_s,
 				ema_alpha: sessionDefaults.ema_alpha,
 				spoof_threshold: sessionDefaults.spoof_threshold,
+				vad_mode: sessionDefaults.vad_mode,
+				vad_frame_ms: sessionDefaults.vad_frame_ms,
 			});
 
 			const id = created.session_id;

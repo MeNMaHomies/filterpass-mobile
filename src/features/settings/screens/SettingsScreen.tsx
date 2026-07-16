@@ -13,13 +13,17 @@ import { hapticSuccess } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 import { ThresholdBand } from '../components/ThresholdBand';
+import { SettingSelect } from '../components/SettingSelect';
 import {
 	API_SESSION_DEFAULTS,
+	VAD_FRAME_MS_OPTIONS,
+	VAD_MODE_OPTIONS,
 	loadSessionDefaults,
 	resetSessionDefaults,
 	saveSessionDefaults,
 	withClampedThresholds,
 	type SessionDefaults,
+	type VadFrameMs,
 } from '../sessionDefaults';
 
 function formatThreshold(value: number): string {
@@ -228,6 +232,60 @@ export function SettingsScreen() {
 				/>
 			</Card>
 
+			<Eyebrow>Voice activity detection</Eyebrow>
+			<Card style={styles.group}>
+				<Text style={styles.sectionBody}>
+					Only frames that contain speech are sent through inference. Silent
+					frames are dropped before chunking.
+				</Text>
+
+				<View style={styles.vadRow}>
+					<View style={styles.vadCopy}>
+						<Text style={styles.fieldTitle}>Sensitivity</Text>
+						<Text style={styles.fieldHint}>
+							0 = least aggressive, 3 = most aggressive.
+						</Text>
+					</View>
+					<SettingSelect
+						value={defaults.vad_mode}
+						options={VAD_MODE_OPTIONS}
+						onChange={(vad_mode) =>
+							setDefaults((d) => ({ ...d, vad_mode }))
+						}
+						accessibilityLabel="VAD sensitivity"
+					/>
+					<View style={styles.vadMeta}>
+						<Text style={styles.vadMetaTitle}>default 2</Text>
+						<Text style={styles.vadMetaBody}>
+							Higher values cut more silence but risk missing softer speech.
+						</Text>
+					</View>
+				</View>
+
+				<View style={styles.vadDivider} />
+
+				<View style={styles.vadRow}>
+					<View style={styles.vadCopy}>
+						<Text style={styles.fieldTitle}>Detection frame size</Text>
+						<Text style={styles.fieldHint}>
+							Length of each frame the detector inspects.
+						</Text>
+					</View>
+					<SettingSelect
+						value={defaults.vad_frame_ms}
+						options={VAD_FRAME_MS_OPTIONS}
+						onChange={(vad_frame_ms: VadFrameMs) =>
+							setDefaults((d) => ({ ...d, vad_frame_ms }))
+						}
+						suffix="ms"
+						accessibilityLabel="VAD detection frame size"
+					/>
+					<View style={styles.vadMeta}>
+						<Text style={styles.vadMetaTitle}>default 30 ms</Text>
+					</View>
+				</View>
+			</Card>
+
 			<View style={styles.actions}>
 				<Button
 					variant="ghost"
@@ -364,6 +422,31 @@ const styles = StyleSheet.create({
 		fontSize: 9,
 		letterSpacing: 1.1,
 		color: colors.muted2,
+	},
+	vadRow: {
+		gap: 10,
+	},
+	vadCopy: {
+		gap: 2,
+	},
+	vadMeta: {
+		gap: 2,
+	},
+	vadMetaTitle: {
+		fontFamily: fontFamilies.mono,
+		fontSize: 11,
+		color: colors.muted2,
+	},
+	vadMetaBody: {
+		fontFamily: fontFamilies.sans,
+		fontSize: 11,
+		color: colors.muted2,
+		lineHeight: 15,
+	},
+	vadDivider: {
+		height: StyleSheet.hairlineWidth,
+		backgroundColor: colors.border,
+		marginVertical: 14,
 	},
 	actions: {
 		flexDirection: 'row',

@@ -89,6 +89,10 @@ export const sessionDefaultsSchema = z
 		spoof_threshold: z.number().min(0.1).max(0.9),
 		/** Client-only; scores in [real, spoof) are UNCERTAIN. */
 		real_threshold: z.number().min(0.05).max(0.85).optional(),
+		vad_mode: z.number().int().min(0).max(3).optional(),
+		vad_frame_ms: z
+			.union([z.literal(10), z.literal(20), z.literal(30)])
+			.optional(),
 	})
 	.transform((d) => {
 		const spoof = d.spoof_threshold;
@@ -104,6 +108,8 @@ export const sessionDefaultsSchema = z
 			ema_alpha: d.ema_alpha,
 			real_threshold: Number(real.toFixed(2)),
 			spoof_threshold: spoof,
+			vad_mode: d.vad_mode ?? 2,
+			vad_frame_ms: d.vad_frame_ms ?? 30,
 		};
 	})
 	.refine((d) => d.real_threshold < d.spoof_threshold, {

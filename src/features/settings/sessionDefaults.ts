@@ -3,6 +3,8 @@ import { sessionDefaultsSchema } from '@/api/schemas';
 
 const STORAGE_KEY = '@filterpass/session_defaults';
 
+export type VadFrameMs = 10 | 20 | 30;
+
 /**
  * Device defaults for the next live session.
  * `real_threshold` is client-only (uncertain band); API still gets spoof_threshold.
@@ -13,6 +15,8 @@ export type SessionDefaults = {
 	ema_alpha: number;
 	real_threshold: number;
 	spoof_threshold: number;
+	vad_mode: number;
+	vad_frame_ms: VadFrameMs;
 };
 
 export const API_SESSION_DEFAULTS: SessionDefaults = {
@@ -21,7 +25,12 @@ export const API_SESSION_DEFAULTS: SessionDefaults = {
 	ema_alpha: 0.3,
 	real_threshold: 0.4,
 	spoof_threshold: 0.6,
+	vad_mode: 2,
+	vad_frame_ms: 30,
 };
+
+export const VAD_MODE_OPTIONS = [0, 1, 2, 3] as const;
+export const VAD_FRAME_MS_OPTIONS = [10, 20, 30] as const;
 
 function parseStoredDefaults(raw: string): SessionDefaults {
 	try {
