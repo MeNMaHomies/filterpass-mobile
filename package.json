@@ -38,7 +38,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.2",
     "prettier": "^3.9.5",
     "typescript": "~6.0.3"
   },
@@ -51,7 +55,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\" \"*.{js,ts,json,md}\" \"docs/**/*.md\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\" \"*.{js,ts,json,md}\" \"docs/**/*.md\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\" \"*.{js,ts,json,md}\" \"docs/**/*.md\"",
+    "test": "jest",
+    "test:watch": "jest --watchAll"
   },
   "private": true
 }

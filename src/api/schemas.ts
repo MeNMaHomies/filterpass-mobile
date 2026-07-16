@@ -30,6 +30,14 @@ export const createSessionRequestSchema = z.object({
 	idle_timeout_s: z.number().optional(),
 });
 
+/** Persisted device settings — validate on read/write from AsyncStorage */
+export const sessionDefaultsSchema = z.object({
+	sample_rate: z.number().int().positive(),
+	chunk_duration_s: z.number().positive(),
+	ema_alpha: z.number().min(0.1).max(0.9),
+	spoof_threshold: z.number().min(0.1).max(0.9),
+});
+
 export const createSessionResponseSchema = z.object({
 	session_id: z.string(),
 	config: sessionConfigSchema,

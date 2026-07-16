@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { z } from 'zod';
+import { sessionDefaultsSchema } from '@/api/schemas';
 import type { CreateSessionRequest } from '@/types/api';
 
 const STORAGE_KEY = '@filterpass/session_defaults';
@@ -17,19 +19,21 @@ export const API_SESSION_DEFAULTS: SessionDefaults = {
 	spoof_threshold: 0.5,
 };
 
+function parseStoredDefaults(raw: string): SessionDefaults {
+	try {
+		const json: unknown = JSON.parse(raw);
+		const result = sessionDefaultsSchema.safeParse(json);
+		return result.success ? result.data : { ...API_SESSION_DEFAULTS };
+	} catch {
+		return { ...API_SESSION_DEFAULTS };
+	}
+}
+
 export async function loadSessionDefaults(): Promise<SessionDefaults> {
 	try {
 		const raw = await AsyncStorage.getItem(STORAGE_KEY);
 		if (!raw) return { ...API_SESSION_DEFAULTS };
-		const parsed = JSON.parse(raw) as Partial<SessionDefaults>;
-		return {
-			sample_rate: parsed.sample_rate ?? API_SESSION_DEFAULTS.sample_rate,
-			chunk_duration_s:
-				parsed.chunk_duration_s ?? API_SESSION_DEFAULTS.chunk_duration_s,
-			ema_alpha: parsed.ema_alpha ?? API_SESSION_DEFAULTS.ema_alpha,
-			spoof_threshold:
-				parsed.spoof_threshold ?? API_SESSION_DEFAULTS.spoof_threshold,
-		};
+		return parseStoredDefaults(raw);
 	} catch {
 		return { ...API_SESSION_DEFAULTS };
 	}
@@ -38,7 +42,8 @@ export async function loadSessionDefaults(): Promise<SessionDefaults> {
 export async function saveSessionDefaults(
 	defaults: SessionDefaults,
 ): Promise<void> {
-	await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+	const validated = sessionDefaultsSchema.parse(defaults);
+	await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
 }
 
 export async function resetSessionDefaults(): Promise<SessionDefaults> {
