@@ -1,4 +1,11 @@
+import { z } from 'zod';
 import { apiRequest } from './client';
+import {
+	historyEventsResponseSchema,
+	historyInferencesResponseSchema,
+	historySessionSummarySchema,
+	inferenceBucketsResponseSchema,
+} from './schemas';
 import type {
 	HistoryEventsResponse,
 	HistoryInferencesResponse,
@@ -12,6 +19,8 @@ export type ListHistorySessionsParams = {
 	only_closed?: boolean;
 };
 
+const historySessionListSchema = z.array(historySessionSummarySchema);
+
 export function listHistorySessions(
 	params: ListHistorySessionsParams = {},
 ): Promise<HistorySessionSummary[]> {
@@ -24,13 +33,16 @@ export function listHistorySessions(
 	const qs = search.toString();
 	return apiRequest<HistorySessionSummary[]>(
 		`/history/sessions${qs ? `?${qs}` : ''}`,
+		{ schema: historySessionListSchema },
 	);
 }
 
 export function getHistorySession(
 	sessionId: string,
 ): Promise<HistorySessionSummary> {
-	return apiRequest<HistorySessionSummary>(`/history/sessions/${sessionId}`);
+	return apiRequest<HistorySessionSummary>(`/history/sessions/${sessionId}`, {
+		schema: historySessionSummarySchema,
+	});
 }
 
 export type GetSessionInferencesParams = {
@@ -54,6 +66,7 @@ export function getSessionInferences(
 	const qs = search.toString();
 	return apiRequest<HistoryInferencesResponse>(
 		`/history/sessions/${sessionId}/inferences${qs ? `?${qs}` : ''}`,
+		{ schema: historyInferencesResponseSchema },
 	);
 }
 
@@ -73,6 +86,7 @@ export function getInferenceBuckets(
 	const qs = search.toString();
 	return apiRequest<InferenceBucketsResponse>(
 		`/history/inferences/buckets${qs ? `?${qs}` : ''}`,
+		{ schema: inferenceBucketsResponseSchema },
 	);
 }
 
@@ -96,9 +110,9 @@ export function getHistoryEvents(
 		}
 	}
 	const qs = search.toString();
-	return apiRequest<HistoryEventsResponse>(
-		`/history/events${qs ? `?${qs}` : ''}`,
-	);
+	return apiRequest<HistoryEventsResponse>(`/history/events${qs ? `?${qs}` : ''}`, {
+		schema: historyEventsResponseSchema,
+	});
 }
 
 export function deleteHistorySession(sessionId: string): Promise<void> {

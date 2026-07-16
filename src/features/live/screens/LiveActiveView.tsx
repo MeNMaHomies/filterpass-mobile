@@ -38,6 +38,7 @@ export function LiveActiveView({
 		<ScrollView
 			contentContainerStyle={styles.scroll}
 			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
 		>
 			<Card glow style={styles.gaugeCard}>
 				<View style={styles.gaugeHeader}>
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
 	metrics: {
 		flexDirection: 'row',
 		gap: 8,
-		marginBottom: 14,
+		marginBottom: 20,
 	},
 	metric: {
 		flex: 1,
@@ -182,5 +183,6 @@ const styles = StyleSheet.create({
 	},
 	stopBtn: {
 		width: '100%',
+		marginTop: 4,
 	},
 });

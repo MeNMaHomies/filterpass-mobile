@@ -1,4 +1,5 @@
 import type { OutputMessage } from '@/types/api';
+import { outputMessageSchema, parseJsonMessage } from '../schemas';
 import { mapWsClose, socketUrl, WsCloseError } from './url';
 
 export type OutputSocketCallbacks = {
@@ -26,12 +27,8 @@ export function connectOutputSocket(
 
 	ws.onmessage = (event) => {
 		if (typeof event.data !== 'string') return;
-		try {
-			const parsed = JSON.parse(event.data) as OutputMessage;
-			callbacks.onMessage?.(parsed);
-		} catch {
-			// ignore malformed JSON
-		}
+		const parsed = parseJsonMessage(event.data, outputMessageSchema);
+		if (parsed) callbacks.onMessage?.(parsed);
 	};
 
 	ws.onerror = () => {

@@ -1,4 +1,8 @@
 import { apiRequest } from './client';
+import {
+	createSessionResponseSchema,
+	liveSessionSchema,
+} from './schemas';
 import type {
 	CreateSessionRequest,
 	CreateSessionResponse,
@@ -11,11 +15,14 @@ export function createSession(
 	return apiRequest<CreateSessionResponse>('/sessions', {
 		method: 'POST',
 		body,
+		schema: createSessionResponseSchema,
 	});
 }
 
 export function getSession(sessionId: string): Promise<LiveSession> {
-	return apiRequest<LiveSession>(`/sessions/${sessionId}`);
+	return apiRequest<LiveSession>(`/sessions/${sessionId}`, {
+		schema: liveSessionSchema,
+	});
 }
 
 export function deleteSession(sessionId: string): Promise<void> {

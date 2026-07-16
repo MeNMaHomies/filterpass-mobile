@@ -1,4 +1,5 @@
 export { ApiError, apiRequest } from './client';
+export * from './schemas';
 export { getHealth } from './health';
 export { createSession, getSession, deleteSession } from './sessions';
 export {

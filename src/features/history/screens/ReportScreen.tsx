@@ -34,8 +34,11 @@ function buildScorePath(
 	if (scores.length === 0) return '';
 	const step = width / Math.max(scores.length - 1, 1);
 	const points = scores.map((score, i) => {
+		const safe = Number.isFinite(score)
+			? Math.min(1, Math.max(0, score))
+			: 0;
 		const x = i * step;
-		const y = height - score * height;
+		const y = height - safe * height;
 		return `${i === 0 ? 'M' : 'L'}${x},${y}`;
 	});
 	return points.join(' ');

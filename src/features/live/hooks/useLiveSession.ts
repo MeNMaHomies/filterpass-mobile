@@ -73,6 +73,7 @@ export function useLiveSession(): LiveSessionState {
 	const sessionIdRef = useRef<string | null>(null);
 	const spoofThresholdRef = useRef(0.5);
 	const stoppingRef = useRef(false);
+	const hasScoredRef = useRef(false);
 
 	const { stream: audioStream } = useAudioStream({
 		encoding: 'int16',
@@ -120,6 +121,7 @@ export function useLiveSession(): LiveSessionState {
 		setFramesSeen(0);
 		setLastRtf(null);
 		setLastLatencyMs(null);
+		hasScoredRef.current = false;
 		stoppingRef.current = false;
 	}, [audioStream]);
 
@@ -153,6 +155,7 @@ export function useLiveSession(): LiveSessionState {
 		if (phase !== 'idle') return;
 		setError(null);
 		setPhase('connecting');
+		hasScoredRef.current = false;
 
 		try {
 			const sessionDefaults = await loadSessionDefaults();
@@ -199,10 +202,13 @@ export function useLiveSession(): LiveSessionState {
 					},
 					onMessage: (msg) => {
 						if (msg.type === 'warmup') {
-							setPhase('warmup');
 							setBufferFillSamples(msg.buffer_fill_samples);
 							setBufferTargetSamples(msg.buffer_target_samples);
+							if (!hasScoredRef.current) {
+								setPhase('warmup');
+							}
 						} else if (msg.type === 'score') {
+							hasScoredRef.current = true;
 							setPhase('active');
 							setSessionScore(msg.session_score);
 							setChunkIdx(msg.chunk_idx);

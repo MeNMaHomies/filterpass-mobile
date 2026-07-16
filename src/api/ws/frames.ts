@@ -1,4 +1,5 @@
 import type { FramesMessage } from '@/types/api';
+import { framesMessageSchema, parseJsonMessage } from '../schemas';
 import { mapWsClose, socketUrl, WsCloseError } from './url';
 
 export type FramesSocketCallbacks = {
@@ -29,12 +30,8 @@ export function connectFramesSocket(
 
 	ws.onmessage = (event) => {
 		if (typeof event.data !== 'string') return;
-		try {
-			const parsed = JSON.parse(event.data) as FramesMessage;
-			callbacks.onMessage?.(parsed);
-		} catch {
-			// ignore malformed JSON
-		}
+		const parsed = parseJsonMessage(event.data, framesMessageSchema);
+		if (parsed) callbacks.onMessage?.(parsed);
 	};
 
 	ws.onerror = () => {

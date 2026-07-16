@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { Card, Eyebrow, StatusBadge } from '@/components';
 import { MicButton } from '../components/MicButton';
 import type { SessionDefaults } from '@/features/settings/sessionDefaults';
@@ -23,7 +23,12 @@ export function LiveIdleView({
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 
 	return (
-		<View style={styles.root}>
+		<ScrollView
+			style={styles.fill}
+			contentContainerStyle={styles.scroll}
+			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
+		>
 			<View style={styles.center}>
 				<MicButton onPress={onMicPress} />
 				<Text style={styles.hint}>Tap to start listening</Text>
@@ -52,20 +57,23 @@ export function LiveIdleView({
 					))}
 				</View>
 			</Card>
-		</View>
+		</ScrollView>
 	);
 }
 
 const styles = StyleSheet.create({
-	root: {
+	fill: {
 		flex: 1,
+	},
+	scroll: {
+		flexGrow: 1,
+		justifyContent: 'center',
 		paddingHorizontal: spacing.screenX,
+		paddingVertical: 24,
 		paddingBottom: spacing.contentBottom,
 	},
 	center: {
-		flex: 1,
 		alignItems: 'center',
-		justifyContent: 'center',
 	},
 	hint: {
 		marginTop: 14,
@@ -85,8 +93,8 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 24,
 	},
 	defaultsCard: {
+		marginTop: 28,
 		padding: 14,
-		marginBottom: 4,
 	},
 	grid: {
 		flexDirection: 'row',

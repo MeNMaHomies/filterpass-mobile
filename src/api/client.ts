@@ -1,4 +1,5 @@
 import { apiBaseUrl } from '@/config/env';
+import type { ZodType } from 'zod';
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -39,16 +40,17 @@ export class ApiError extends Error {
 	}
 }
 
-type RequestOptions = Omit<RequestInit, 'body'> & {
+type RequestOptions<T> = Omit<RequestInit, 'body'> & {
 	body?: unknown;
 	requestId?: string;
+	schema?: ZodType<T>;
 };
 
 export async function apiRequest<T>(
 	path: string,
-	options: RequestOptions = {},
+	options: RequestOptions<T> = {},
 ): Promise<T> {
-	const { body, requestId, headers, ...rest } = options;
+	const { body, requestId, headers, schema, ...rest } = options;
 
 	const reqHeaders: Record<string, string> = {
 		Accept: 'application/json',
@@ -95,6 +97,19 @@ export async function apiRequest<T>(
 				? (parsed as { detail: string }).detail
 				: `Request failed with status ${response.status}`;
 		throw new ApiError(message, response.status, parsed, responseRequestId);
+	}
+
+	if (schema) {
+		const result = schema.safeParse(parsed);
+		if (!result.success) {
+			throw new ApiError(
+				'Invalid API response shape',
+				response.status,
+				result.error.flatten(),
+				responseRequestId,
+			);
+		}
+		return result.data;
 	}
 
 	return parsed as T;

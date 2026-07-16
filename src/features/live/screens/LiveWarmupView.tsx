@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, Pressable, StyleSheet } from 'react-native';
 import { Square } from 'lucide-react-native';
 import { Card, Eyebrow, StatusBadge } from '@/components';
 import { colors, spacing } from '@/theme/tokens';
@@ -24,7 +24,11 @@ export function LiveWarmupView({
 			: 0;
 
 	return (
-		<View style={styles.root}>
+		<ScrollView
+			contentContainerStyle={styles.scroll}
+			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
+		>
 			<StatusBadge label="Warming up" variant="WARMUP" />
 
 			<View style={styles.progressBlock}>
@@ -56,13 +60,12 @@ export function LiveWarmupView({
 				</Pressable>
 				<Text style={styles.cancelLabel}>Cancel</Text>
 			</View>
-		</View>
+		</ScrollView>
 	);
 }
 
 const styles = StyleSheet.create({
-	root: {
-		flex: 1,
+	scroll: {
 		paddingHorizontal: spacing.screenX,
 		paddingTop: 24,
 		paddingBottom: spacing.contentBottom,
@@ -98,7 +101,7 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 	},
 	infoCard: {
-		marginTop: 32,
+		marginTop: 28,
 		padding: 16,
 		width: '100%',
 	},
@@ -110,14 +113,13 @@ const styles = StyleSheet.create({
 		marginTop: 8,
 	},
 	cancelBlock: {
-		marginTop: 'auto',
-		paddingTop: 28,
+		marginTop: 36,
 		alignItems: 'center',
 	},
 	cancelButton: {
-		width: 72,
-		height: 72,
-		borderRadius: 36,
+		width: 64,
+		height: 64,
+		borderRadius: 32,
 		backgroundColor: colors.destructiveSoft,
 		borderWidth: 2,
 		borderColor: colors.destructive,
