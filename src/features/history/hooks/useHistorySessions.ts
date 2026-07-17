@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { listHistorySessions } from '@/api';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import type { HistorySession } from '@/types';
 import { formatApiError } from '@/lib/apiError';
 import {
@@ -8,9 +7,9 @@ import {
 	shortSessionId,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { loadSessionDefaults } from '@/features/settings/sessionDefaults';
-
-const PAGE_SIZE = 50;
+import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
+import { historySessionsInfiniteOptions } from '@/queries/history';
+import type { HistorySessionSummary } from '@/types/api';
 
 type HistorySessionsState = {
 	sessions: HistorySession[];
@@ -24,7 +23,7 @@ type HistorySessionsState = {
 };
 
 function mapSessionRow(
-	s: Awaited<ReturnType<typeof listHistorySessions>>[number],
+	s: HistorySessionSummary,
 	realThreshold: number,
 ): HistorySession {
 	return {
@@ -45,71 +44,39 @@ function mapSessionRow(
 }
 
 export function useHistorySessions(): HistorySessionsState {
-	const [sessions, setSessions] = useState<HistorySession[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [refreshing, setRefreshing] = useState(false);
-	const [loadingMore, setLoadingMore] = useState(false);
-	const [hasMore, setHasMore] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-	const offsetRef = useRef(0);
-	const realThresholdRef = useRef(0.4);
+	const { defaults } = useSessionDefaults();
+	const realThreshold = defaults.real_threshold;
 
-	const loadPage = useCallback(async (mode: 'initial' | 'refresh' | 'more') => {
-		if (mode === 'more') setLoadingMore(true);
-		else if (mode === 'refresh') setRefreshing(true);
-		else setLoading(true);
+	const query = useInfiniteQuery(historySessionsInfiniteOptions());
 
-		setError(null);
+	const sessions =
+		query.data?.pages.flatMap((page) =>
+			page.map((row) => mapSessionRow(row, realThreshold)),
+		) ?? [];
 
-		const offset = mode === 'more' ? offsetRef.current : 0;
+	const refresh = async () => {
+		await query.refetch();
+	};
 
-		try {
-			if (mode !== 'more') {
-				const defaults = await loadSessionDefaults();
-				realThresholdRef.current = defaults.real_threshold;
-			}
-
-			const rows = await listHistorySessions({
-				limit: PAGE_SIZE,
-				offset,
-			});
-			const mapped = rows.map((row) =>
-				mapSessionRow(row, realThresholdRef.current),
-			);
-
-			setSessions((prev) =>
-				mode === 'more' ? [...prev, ...mapped] : mapped,
-			);
-			offsetRef.current = offset + rows.length;
-			setHasMore(rows.length === PAGE_SIZE);
-		} catch (e) {
-			setError(formatApiError(e));
-			if (mode !== 'more') setSessions([]);
-		} finally {
-			setLoading(false);
-			setRefreshing(false);
-			setLoadingMore(false);
+	const loadMore = async () => {
+		if (
+			!query.hasNextPage ||
+			query.isFetchingNextPage ||
+			query.isPending ||
+			query.isRefetching
+		) {
+			return;
 		}
-	}, []);
-
-	useEffect(() => {
-		loadPage('initial');
-	}, [loadPage]);
-
-	const refresh = useCallback(() => loadPage('refresh'), [loadPage]);
-
-	const loadMore = useCallback(async () => {
-		if (loadingMore || loading || refreshing || !hasMore) return;
-		await loadPage('more');
-	}, [loadingMore, loading, refreshing, hasMore, loadPage]);
+		await query.fetchNextPage();
+	};
 
 	return {
 		sessions,
-		loading,
-		refreshing,
-		loadingMore,
-		hasMore,
-		error,
+		loading: query.isPending,
+		refreshing: query.isRefetching && !query.isFetchingNextPage,
+		loadingMore: query.isFetchingNextPage,
+		hasMore: Boolean(query.hasNextPage),
+		error: query.error ? formatApiError(query.error) : null,
 		refresh,
 		loadMore,
 	};

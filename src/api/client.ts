@@ -1,6 +1,7 @@
 import { apiBaseUrl } from '@/config/env';
 import type { ZodType } from 'zod';
 import NetInfo from '@react-native-community/netinfo';
+import { ClientErrorCode } from '@/lib/clientErrorCodes';
 import { ApiError } from './errors';
 
 export { ApiError } from './errors';
@@ -31,6 +32,7 @@ function validateBody(
 			0,
 			result.error.flatten(),
 			requestId,
+			ClientErrorCode.INVALID_REQUEST_BODY,
 		);
 	}
 	return result.data;
@@ -54,7 +56,13 @@ async function assertNetworkAvailable(requestId: string | null): Promise<void> {
 	try {
 		const state = await NetInfo.fetch();
 		if (state.isConnected === false) {
-			throw new ApiError('No internet connection', 0, null, requestId);
+			throw new ApiError(
+				'No internet connection',
+				0,
+				null,
+				requestId,
+				ClientErrorCode.NO_INTERNET,
+			);
 		}
 	} catch (e) {
 		if (e instanceof ApiError) throw e;
@@ -157,6 +165,7 @@ export async function apiRequest<T>(
 					response.status,
 					result.error.flatten(),
 					responseRequestId,
+					ClientErrorCode.INVALID_API_RESPONSE_SHAPE,
 				);
 			}
 			return result.data;
@@ -173,6 +182,7 @@ export async function apiRequest<T>(
 				0,
 				null,
 				requestId ?? null,
+				ClientErrorCode.REQUEST_TIMED_OUT,
 			);
 		}
 		throw e;

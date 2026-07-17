@@ -1,4 +1,9 @@
 import type { ApiErrorCode } from '@/types/api';
+import {
+	ClientErrorCode,
+	isClientErrorCode,
+	type ClientErrorCodeName,
+} from '@/lib/clientErrorCodes';
 
 /** REST `detail` codes from docs/api.md */
 export const REST_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
@@ -41,50 +46,74 @@ const HTTP_STATUS_MESSAGES: Record<number, string> = {
 	503: 'The server is temporarily unavailable. Try again shortly.',
 };
 
-/** Matches `ApiError.message` prefixes from client/schemas validation. */
+/** Typed client error codes → user-facing copy. */
+export const CLIENT_ERROR_MESSAGES: Record<ClientErrorCodeName, string> = {
+	[ClientErrorCode.INVALID_REQUEST_BODY]:
+		'Session settings are invalid. Review Settings and try again.',
+	[ClientErrorCode.INVALID_SESSION_ID]: 'This session link is invalid.',
+	[ClientErrorCode.INVALID_HISTORY_LIST_PARAMS]:
+		'Could not load history with the current filters.',
+	[ClientErrorCode.INVALID_INFERENCE_QUERY_PARAMS]:
+		'Could not load inference history with the current filters.',
+	[ClientErrorCode.INVALID_INFERENCE_BUCKET_PARAMS]:
+		'Could not load chart data with the current date range.',
+	[ClientErrorCode.INVALID_HISTORY_EVENTS_PARAMS]:
+		'Could not load session events with the current filters.',
+	[ClientErrorCode.INVALID_API_RESPONSE_SHAPE]:
+		'Received an unexpected response from the server. Try updating the app.',
+	[ClientErrorCode.REQUEST_TIMED_OUT]:
+		'The server did not respond in time. Check that the backend is running and try again.',
+	[ClientErrorCode.NO_INTERNET]:
+		'You appear to be offline. Check your connection and try again.',
+	[ClientErrorCode.BACKEND_MODEL_NOT_READY]:
+		'The detection service is online but the model is not ready yet. Try again in a moment.',
+};
+
+/** Legacy message-prefix fallback while older call sites still throw plain strings. */
 const CLIENT_ERROR_PREFIXES: { match: string; message: string }[] = [
 	{
 		match: 'Invalid request body',
-		message: 'Session settings are invalid. Review Settings and try again.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_REQUEST_BODY],
 	},
 	{
 		match: 'Invalid session ID',
-		message: 'This session link is invalid.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_SESSION_ID],
 	},
 	{
 		match: 'Invalid history list params',
-		message: 'Could not load history with the current filters.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_HISTORY_LIST_PARAMS],
 	},
 	{
 		match: 'Invalid inference query params',
-		message: 'Could not load inference history with the current filters.',
+		message:
+			CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_INFERENCE_QUERY_PARAMS],
 	},
 	{
 		match: 'Invalid inference bucket params',
-		message: 'Could not load chart data with the current date range.',
+		message:
+			CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_INFERENCE_BUCKET_PARAMS],
 	},
 	{
 		match: 'Invalid history events params',
-		message: 'Could not load session events with the current filters.',
+		message:
+			CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_HISTORY_EVENTS_PARAMS],
 	},
 	{
 		match: 'Invalid API response shape',
 		message:
-			'Received an unexpected response from the server. Try updating the app.',
+			CLIENT_ERROR_MESSAGES[ClientErrorCode.INVALID_API_RESPONSE_SHAPE],
 	},
 	{
 		match: 'Request timed out',
-		message:
-			'The server did not respond in time. Check that the backend is running and try again.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.REQUEST_TIMED_OUT],
 	},
 	{
 		match: 'No internet connection',
-		message: 'You appear to be offline. Check your connection and try again.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.NO_INTERNET],
 	},
 	{
 		match: 'Backend model not ready',
-		message:
-			'The detection service is online but the model is not ready yet. Try again in a moment.',
+		message: CLIENT_ERROR_MESSAGES[ClientErrorCode.BACKEND_MODEL_NOT_READY],
 	},
 ];
 
@@ -130,6 +159,15 @@ export function messageForRestCode(code: string): string | undefined {
 
 export function messageForHttpStatus(status: number): string | undefined {
 	return HTTP_STATUS_MESSAGES[status];
+}
+
+export function messageForClientErrorCode(
+	code: string | null | undefined,
+): string | undefined {
+	if (code && isClientErrorCode(code)) {
+		return CLIENT_ERROR_MESSAGES[code];
+	}
+	return undefined;
 }
 
 export function messageForClientError(raw: string): string | undefined {

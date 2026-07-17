@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
-import type { CaptureMode } from '../hooks/useLiveSession';
+import type { CaptureMode } from '../types';
 import { colors, radius } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 

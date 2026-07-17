@@ -2,17 +2,17 @@ import {
 	createContext,
 	useCallback,
 	useContext,
-	useEffect,
 	useMemo,
-	useState,
 	type ReactNode,
 } from 'react';
-import { getHealth } from '@/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/api/errors';
 import type { HealthResponse } from '@/types/api';
-import { assertBackendHealthy } from '@/lib/backendHealth';
+import { ClientErrorCode } from '@/lib/clientErrorCodes';
 import { formatApiError } from '@/lib/apiError';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { healthQueryOptions } from '@/queries/health';
+import { queryKeys } from '@/queries/keys';
 
 export type BackendHealthStatus = 'checking' | 'ok' | 'down';
 
@@ -32,70 +32,70 @@ const BackendHealthContext = createContext<BackendHealthContextValue | null>(
 
 export function BackendHealthProvider({ children }: { children: ReactNode }) {
 	const { isOffline } = useNetworkStatus();
-	const [status, setStatus] = useState<BackendHealthStatus>('checking');
-	const [health, setHealth] = useState<HealthResponse | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 
-	const checkHealth = useCallback(async (): Promise<HealthResponse> => {
+	const query = useQuery({
+		...healthQueryOptions,
+		enabled: !isOffline,
+		retry: false,
+	});
+
+	const { status, health, error } = useMemo(() => {
 		if (isOffline) {
-			throw new ApiError('No internet connection', 0, null, null);
+			return {
+				status: 'down' as const,
+				health: null,
+				error: null,
+			};
 		}
-
-		return assertBackendHealthy(await getHealth());
-	}, [isOffline]);
+		if (query.isPending && !query.isFetched) {
+			return {
+				status: 'checking' as const,
+				health: null,
+				error: null,
+			};
+		}
+		if (query.isSuccess) {
+			return {
+				status: 'ok' as const,
+				health: query.data,
+				error: null,
+			};
+		}
+		return {
+			status: 'down' as const,
+			health: null,
+			error: query.error ? formatApiError(query.error) : null,
+		};
+	}, [
+		isOffline,
+		query.isPending,
+		query.isFetched,
+		query.isSuccess,
+		query.data,
+		query.error,
+	]);
 
 	const refresh = useCallback(async () => {
-		setStatus('checking');
-		setError(null);
-		try {
-			const next = await checkHealth();
-			setHealth(next);
-			setStatus('ok');
-			setError(null);
-		} catch (e) {
-			setHealth(null);
-			setStatus('down');
-			setError(isOffline ? null : formatApiError(e));
-		}
-	}, [checkHealth, isOffline]);
+		if (isOffline) return;
+		await queryClient.refetchQueries({ queryKey: queryKeys.health });
+	}, [isOffline, queryClient]);
 
 	const ensureReady = useCallback(async () => {
-		try {
-			const next = await checkHealth();
-			setHealth(next);
-			setStatus('ok');
-			setError(null);
-			return next;
-		} catch (e) {
-			setHealth(null);
-			setStatus('down');
-			setError(isOffline ? null : formatApiError(e));
-			throw e;
+		if (isOffline) {
+			throw new ApiError(
+				'No internet connection',
+				0,
+				null,
+				null,
+				ClientErrorCode.NO_INTERNET,
+			);
 		}
-	}, [checkHealth, isOffline]);
-
-	useEffect(() => {
-		let active = true;
-
-		void checkHealth().then(
-			(next) => {
-				if (!active) return;
-				setHealth(next);
-				setStatus('ok');
-				setError(null);
-			},
-			(e) => {
-				if (!active) return;
-				setHealth(null);
-				setStatus('down');
-				setError(isOffline ? null : formatApiError(e));
-			},
-		);
-
-		return () => {
-			active = false;
-		};
-	}, [checkHealth, isOffline]);
+		return queryClient.fetchQuery({
+			...healthQueryOptions,
+			staleTime: 0,
+		});
+	}, [isOffline, queryClient]);
 
 	const value = useMemo(
 		() => ({ status, health, error, refresh, ensureReady }),

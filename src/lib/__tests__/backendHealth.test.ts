@@ -31,6 +31,7 @@ describe('assertBackendHealthy', () => {
 		} catch (e) {
 			expect(e).toBeInstanceOf(ApiError);
 			expect((e as ApiError).message).toBe(HEALTH_NOT_READY_MESSAGE);
+			expect((e as ApiError).clientCode).toBe('backend_model_not_ready');
 		}
 	});
 

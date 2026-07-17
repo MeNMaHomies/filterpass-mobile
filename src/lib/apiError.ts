@@ -2,6 +2,7 @@ import { ApiError, WsCloseError } from '@/api';
 import {
 	isNetworkErrorMessage,
 	messageForClientError,
+	messageForClientErrorCode,
 	messageForFramesCode,
 	messageForHttpStatus,
 	messageForNetworkError,
@@ -61,7 +62,12 @@ export function parseApiErrorDetail(body: unknown): ParsedApiDetail {
 }
 
 function formatApiErrorInstance(error: ApiError): string {
-	// Client validation / schema mismatches — match by message, any status.
+	const byClientCode = messageForClientErrorCode(error.clientCode);
+	if (byClientCode) {
+		return byClientCode;
+	}
+
+	// Legacy fallback: match by message prefix.
 	const clientMapped = messageForClientError(error.message);
 	if (clientMapped) {
 		return clientMapped;

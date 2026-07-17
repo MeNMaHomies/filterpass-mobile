@@ -25,19 +25,34 @@ Backend contract: [`api.md`](./api.md). Stack versions: [`tech-stack.md`](./tech
 ```
 src/app/(tabs)/*          routes only — compose feature screens/hooks
 src/features/<name>/      screens, components, hooks for a domain
-src/api/                  HTTP + WS — no UI
+src/api/                  HTTP + WS fetchers — no UI
+src/queries/              TanStack Query keys, options, mutations
 src/components/           shared presentational UI
 src/lib/                  pure helpers
 src/config/               env
-src/types/                shared types
+src/types/                shared types (Zod-inferred wire types)
 modules/*                 local Expo native modules (Android Kotlin)
 ```
 
 Rules of thumb:
 
-- Screens do **not** call `fetch` / open sockets directly; feature hooks use `@/api`.
+- Screens do **not** call `fetch` / open sockets directly; feature hooks use `@/api` / `@/queries`.
 - Prefer existing `AppShell`, `Card`, `Button`, charts over one-off chrome.
 - Wire types and Zod schemas stay aligned with `docs/api.md`.
+- **Server state (REST):** TanStack Query (`src/queries/`) — see [`react-query-migration.md`](./react-query-migration.md). Live WS/PCM stay imperative.
+
+## Data fetching
+
+| Concern | Implementation |
+| ------- | -------------- |
+| REST cache | `@tanstack/react-query` via `src/queries/*` |
+| History pages | `useInfiniteQuery` (`historySessionsInfiniteOptions`) |
+| `/health` | `useQuery` + `BackendHealthProvider` façade |
+| Session report | `useQueries` (session + inferences) |
+| Home overview | `useQueries` (shared health/history/bucket keys) |
+| Session defaults | `useQuery` + mutations over AsyncStorage |
+| Live WS / PCM | `useLiveSession` (imperative) |
+
 
 ## Feature map
 
@@ -53,6 +68,16 @@ Rules of thumb:
 
 Central hook: `useLiveSession` (`src/features/live/hooks/useLiveSession.ts`).
 
+Internals (keep screens on the facade):
+
+| Piece | Path | Role |
+| ----- | ---- | ---- |
+| Types | `features/live/types.ts` | Phase, capture mode, Call Scan setup |
+| Reducer | `features/live/domain/liveSessionReducer.ts` | Pure output/frames → metrics/phase |
+| Dual WS | `features/live/session/connectLiveSession.ts` | Open frames+output atomically |
+| Mic | `features/live/capture/useMicCapture.ts` | expo-audio adapter |
+| Call | `features/live/hooks/useCallCapture.ts` | Native module + Accessibility |
+
 ```
 idle
   → start()
@@ -60,7 +85,7 @@ connecting
   → ensureReady (/health)
   → mic permission + audio mode
   → POST /sessions
-  → connect /ws/output + /ws/frames (both must open)
+  → connectLiveSession (/ws/output + /ws/frames)
   → start capture (mic OR call)
 warmup (first output "warmup")
 active (first output "score")
@@ -116,7 +141,8 @@ Design intent: **best-effort** mixed mono. Client does not gate on silence or fa
 | ------------------------- | --------------------------------------------------------- |
 | API base URL              | `EXPO_PUBLIC_API_URL` → `src/config/env.ts`               |
 | WS base                   | Derived (`ws` / `wss`); Android emulator localhost remap  |
-| Session defaults          | `src/features/settings/sessionDefaults.ts` + AsyncStorage |
+| Session defaults          | AsyncStorage + Query cache (`src/queries/settings.ts`)    |
+| REST server state         | `src/queries/*` + `QueryClientProvider` in `_layout`      |
 | Android package / plugins | `app.json` + call-capture config plugin                   |
 
 Scripts:
@@ -132,13 +158,15 @@ Scripts:
 
 ## Testing layout
 
-| Layer               | Where                                                      |
-| ------------------- | ---------------------------------------------------------- |
-| JS unit / component | `src/**/__tests__`, Jest + jest-expo                       |
-| Native PCM helpers  | `modules/filterpass-call-capture/android/src/test` (JUnit) |
+| Layer               | Where                                                                 |
+| ------------------- | --------------------------------------------------------------------- |
+| JS unit / component | `src/**/__tests__`, Jest + jest-expo                                  |
+| Query keys / pages  | `src/queries/__tests__`                                               |
+| Live domain / WS    | `features/live/domain`, `features/live/session`, `src/api/ws/__tests__` |
+| Native PCM helpers  | `modules/filterpass-call-capture/android/src/test` (JUnit)            |
 
 ## Extension points
 
-- New REST resources → `src/api/*` + `src/types/api.ts` + Zod in `src/api/schemas.ts` + update `docs/api.md` when backend changes.
+- New REST resources → `src/api/*` + Zod in `src/api/schemas.ts` + `src/types/api.ts` (`z.infer`) + `src/queries/*` options/keys + update `docs/api.md` when backend changes.
 - New Live UI phases → `src/features/live/screens/*` driven by `useLiveSession` phase.
 - Deeper call capture (background, OEM-specific sources) → Kotlin under `modules/filterpass-call-capture` only; keep JS event contract stable (`onPcm` / `onStatus`).

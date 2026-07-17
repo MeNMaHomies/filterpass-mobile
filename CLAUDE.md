@@ -7,9 +7,10 @@
 | Doc                                            | When                                               |
 | ---------------------------------------------- | -------------------------------------------------- |
 | [`docs/tech-stack.md`](docs/tech-stack.md)     | Versions, libraries, tooling                       |
-| [`docs/architecture.md`](docs/architecture.md) | App layout, live flow, native seams                |
+| [`docs/architecture.md`](docs/architecture.md) | App layout, live flow, data layer, native seams    |
 | [`docs/api.md`](docs/api.md)                   | REST + WebSocket wire contract (**authoritative**) |
 | [`docs/call-capture.md`](docs/call-capture.md) | Android Call Scan / dual capture                   |
+| [`docs/react-query-migration.md`](docs/react-query-migration.md) | TanStack Query REST cache layout     |
 | [`docs/README.md`](docs/README.md)             | Docs index                                         |
 
 Do not guess API fields, PCM formats, or Call Scan behavior — read the matching doc.
@@ -39,10 +40,11 @@ Use it for all REST and WebSocket contracts (sessions, `/ws/frames`, `/ws/output
 
 ### Client layout
 
-- `src/api/` — HTTP client (`client.ts`), REST modules (`health`, `sessions`, `history`), WebSocket helpers (`ws/frames`, `ws/output`).
-- `src/types/api.ts` — wire types mirroring `docs/api.md`.
+- `src/api/` — HTTP client (`client.ts`), REST modules (`health`, `sessions`, `history`), WebSocket helpers (`ws/frames`, `ws/output`, `ws/managedSocket`).
+- `src/queries/` — TanStack Query keys, options, mutations; feature hooks compose these.
+- `src/types/api.ts` — wire types inferred from Zod schemas (`docs/api.md`).
 - `src/config/env.ts` — `EXPO_PUBLIC_API_URL` (default `http://localhost:8000`) and derived `apiWsBaseUrl`.
-- Feature hooks call `@/api`; screens do not call `fetch` directly.
+- Feature hooks call `@/api` / `@/queries`; screens do not call `fetch` directly.
 
 **Env:** copy `.env.example` to `.env`. Android emulator may need `http://10.0.2.2:8000`; physical devices need your machine's LAN IP.
 

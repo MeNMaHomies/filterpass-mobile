@@ -4,6 +4,9 @@
 	"description": "Android call audio capture for FilterPass showcase",
 	"main": "index.ts",
 	"types": "index.ts",
+	"exports": {
+		".": "./index.ts"
+	},
 	"license": "MIT",
 	"author": "FilterPass",
 	"peerDependencies": {

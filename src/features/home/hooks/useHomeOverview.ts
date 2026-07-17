@@ -1,101 +1,112 @@
-import { useCallback, useEffect, useState } from 'react';
-import { getHealth, getInferenceBuckets, listHistorySessions } from '@/api';
+import { useQueries } from '@tanstack/react-query';
 import type { KpiItem, RecentSession } from '@/types';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { formatApiError } from '@/lib/apiError';
 import { shortSessionId } from '@/lib/formatSession';
+import { formatApiError } from '@/lib/apiError';
+import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
+import {
+	healthQueryOptions,
+	homeActiveSessionsQueryOptions,
+	homeBuckets24hQueryOptions,
+	homeRecentSessionsQueryOptions,
+} from '@/queries/home';
 
-type HomeOverviewState = {
-	kpis: KpiItem[];
-	recentSessions: RecentSession[];
-	loading: boolean;
-	error: string | null;
-	refresh: () => void;
-};
+export function useHomeOverview() {
+	const { defaults } = useSessionDefaults();
+	const realThreshold = defaults.real_threshold;
 
-export function useHomeOverview(): HomeOverviewState {
-	const [kpis, setKpis] = useState<KpiItem[]>([]);
-	const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const [healthQuery, activeQuery, bucketsQuery, recentQuery] = useQueries({
+		queries: [
+			{ ...healthQueryOptions },
+			{ ...homeActiveSessionsQueryOptions() },
+			{ ...homeBuckets24hQueryOptions() },
+			{ ...homeRecentSessionsQueryOptions() },
+		],
+	});
 
-	const load = useCallback(async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const now = Date.now() / 1000;
-			const [health, liveSessions, buckets, recent] = await Promise.all([
-				getHealth(),
-				listHistorySessions({ only_closed: false, limit: 100 }),
-				getInferenceBuckets({
-					from_ts: now - 86400,
-					to_ts: now,
-					bucket_s: 3600,
-				}),
-				listHistorySessions({ limit: 3 }),
-			]);
+	const health = healthQuery.data;
+	const liveSessions = activeQuery.data ?? [];
+	const buckets = bucketsQuery.data;
+	const recent = recentQuery.data ?? [];
 
-			const chunks24h = buckets.buckets.reduce(
-				(sum, b) => sum + b.chunks_total,
-				0,
-			);
+	const chunks24h =
+		buckets?.buckets.reduce((sum, b) => sum + b.chunks_total, 0) ?? 0;
 
-			const closedWithRtf = recent.filter(
-				(s) => s.closed_at !== null && s.last_rtf !== null,
-			);
-			const avgRtf =
-				closedWithRtf.length > 0
-					? closedWithRtf.reduce((sum, s) => sum + (s.last_rtf ?? 0), 0) /
-						closedWithRtf.length
-					: null;
+	const closedWithRtf = recent.filter(
+		(s) => s.closed_at !== null && s.last_rtf !== null,
+	);
+	const avgRtf =
+		closedWithRtf.length > 0
+			? closedWithRtf.reduce((sum, s) => sum + (s.last_rtf ?? 0), 0) /
+				closedWithRtf.length
+			: null;
 
-			setKpis([
-				{
-					label: 'Detector',
-					value: health.model_loaded ? 'Ready' : 'Unavailable',
-					live: health.status === 'ok' && health.model_loaded,
-				},
-				{
-					label: 'Active now',
-					value: String(liveSessions.length),
-					live: liveSessions.length > 0,
-				},
-				{
-					label: 'Chunks 24h',
-					value: chunks24h.toLocaleString(),
-					live: false,
-				},
-				{
-					label: 'Avg speed',
-					value: avgRtf !== null ? avgRtf.toFixed(2) : '—',
-					live: false,
-				},
-			]);
+	const kpis: KpiItem[] =
+		health && buckets
+			? [
+					{
+						label: 'Detector',
+						value: health.model_loaded ? 'Ready' : 'Unavailable',
+						live: health.status === 'ok' && health.model_loaded,
+					},
+					{
+						label: 'Active now',
+						value: String(liveSessions.length),
+						live: liveSessions.length > 0,
+					},
+					{
+						label: 'Chunks 24h',
+						value: chunks24h.toLocaleString(),
+						live: false,
+					},
+					{
+						label: 'Avg speed',
+						value: avgRtf !== null ? avgRtf.toFixed(2) : '—',
+						live: false,
+					},
+				]
+			: [];
 
-			setRecentSessions(
-				recent.map((s) => ({
-					id: shortSessionId(s.session_id),
-					sessionId: s.session_id,
-					score: s.avg_session_score ?? 0,
-					label:
-						s.avg_session_score !== null
-							? deriveSessionLabel(
-									s.avg_session_score,
-									s.spoof_threshold,
-								)
-							: 'REAL',
-				})),
-			);
-		} catch (e) {
-			setError(formatApiError(e));
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+	const recentSessions: RecentSession[] = recent.map((s) => ({
+		id: shortSessionId(s.session_id),
+		sessionId: s.session_id,
+		score: s.avg_session_score ?? 0,
+		label:
+			s.avg_session_score !== null
+				? deriveSessionLabel(
+						s.avg_session_score,
+						s.spoof_threshold,
+						realThreshold,
+					)
+				: 'REAL',
+	}));
 
-	useEffect(() => {
-		load();
-	}, [load]);
+	const firstError =
+		healthQuery.error ??
+		activeQuery.error ??
+		bucketsQuery.error ??
+		recentQuery.error;
 
-	return { kpis, recentSessions, loading, error, refresh: load };
+	const loading =
+		healthQuery.isPending ||
+		activeQuery.isPending ||
+		bucketsQuery.isPending ||
+		recentQuery.isPending;
+
+	const refresh = async () => {
+		await Promise.all([
+			healthQuery.refetch(),
+			activeQuery.refetch(),
+			bucketsQuery.refetch(),
+			recentQuery.refetch(),
+		]);
+	};
+
+	return {
+		kpis,
+		recentSessions,
+		loading,
+		error: firstError ? formatApiError(firstError) : null,
+		refresh,
+	};
 }

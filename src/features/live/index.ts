@@ -5,7 +5,9 @@ export type {
 	LivePhase,
 	ConnectionStatus,
 	CaptureMode,
-} from './hooks/useLiveSession';
+	CallScanSetup,
+	LiveSessionState,
+} from './types';
 export { useCallCapture } from './hooks/useCallCapture';
 export type { CallCaptureController } from './hooks/useCallCapture';
 export { LiveActiveView } from './screens/LiveActiveView';

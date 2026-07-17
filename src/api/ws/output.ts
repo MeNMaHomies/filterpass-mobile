@@ -1,13 +1,8 @@
 import type { OutputMessage } from '@/types/api';
-import { outputMessageSchema, parseJsonMessage, requireSessionId } from '../schemas';
-import { mapWsClose, socketUrl, WsCloseError } from './url';
+import { outputMessageSchema, requireSessionId } from '../schemas';
+import { createManagedSocket, type ManagedSocketCallbacks } from './managedSocket';
 
-export type OutputSocketCallbacks = {
-	onMessage?: (message: OutputMessage) => void;
-	onOpen?: () => void;
-	onClose?: (error: WsCloseError | null) => void;
-	onError?: (error: Error) => void;
-};
+export type OutputSocketCallbacks = ManagedSocketCallbacks<OutputMessage>;
 
 export type OutputSocket = {
 	close: () => void;
@@ -18,41 +13,12 @@ export function connectOutputSocket(
 	callbacks: OutputSocketCallbacks = {},
 ): OutputSocket {
 	const id = requireSessionId(sessionId);
-	const ws = new WebSocket(socketUrl(`/ws/output/${id}`));
+	const { close } = createManagedSocket({
+		path: `/ws/output/${id}`,
+		label: 'Output',
+		schema: outputMessageSchema,
+		callbacks,
+	});
 
-	let closed = false;
-
-	ws.onopen = () => {
-		callbacks.onOpen?.();
-	};
-
-	ws.onmessage = (event) => {
-		if (typeof event.data !== 'string') return;
-		const parsed = parseJsonMessage(event.data, outputMessageSchema);
-		if (parsed) callbacks.onMessage?.(parsed);
-	};
-
-	ws.onerror = () => {
-		callbacks.onError?.(new Error('Output WebSocket error'));
-	};
-
-	ws.onclose = (event) => {
-		if (closed) return;
-		closed = true;
-		const err =
-			event.code === 1000 ? null : mapWsClose(event);
-		callbacks.onClose?.(err);
-	};
-
-	return {
-		close() {
-			closed = true;
-			if (
-				ws.readyState === WebSocket.OPEN ||
-				ws.readyState === WebSocket.CONNECTING
-			) {
-				ws.close(1000, 'client close');
-			}
-		},
-	};
+	return { close };
 }

@@ -40,15 +40,25 @@ export function useCallCapture({
 
 	const [accessibility, setAccessibility] =
 		useState<AccessibilityStatus>(DISABLED_STATUS);
-	const [lastStatus, setLastStatus] = useState<CaptureStatusEvent | null>(null);
+	const [lastStatus, setLastStatus] = useState<CaptureStatusEvent | null>(
+		null,
+	);
 
 	const refreshAccessibility = useCallback((): AccessibilityStatus => {
 		if (!available) {
-			setAccessibility(DISABLED_STATUS);
+			setAccessibility((prev) =>
+				prev.enabled === false && prev.connected === false
+					? prev
+					: DISABLED_STATUS,
+			);
 			return DISABLED_STATUS;
 		}
 		const next = FilterpassCallCapture.getAccessibilityStatus();
-		setAccessibility(next);
+		setAccessibility((prev) =>
+			prev.enabled === next.enabled && prev.connected === next.connected
+				? prev
+				: next,
+		);
 		return next;
 	}, [available]);
 
@@ -60,15 +70,22 @@ export function useCallCapture({
 		const pcmSub = FilterpassCallCapture.addListener('onPcm', (event) => {
 			onPcmRef.current(base64ToArrayBuffer(event.data));
 		});
-		const statusSub = FilterpassCallCapture.addListener('onStatus', (event) => {
-			setLastStatus(event);
-			if (event.type === 'accessibility') {
-				setAccessibility({
-					enabled: Boolean(event.enabled),
-					connected: Boolean(event.connected),
-				});
-			}
-		});
+		const statusSub = FilterpassCallCapture.addListener(
+			'onStatus',
+			(event) => {
+				setLastStatus(event);
+				if (event.type === 'accessibility') {
+					setAccessibility((prev) => {
+						const enabled = event.enabled;
+						const connected = event.connected;
+						if (prev.enabled === enabled && prev.connected === connected) {
+							return prev;
+						}
+						return { enabled, connected };
+					});
+				}
+			},
+		);
 
 		return () => {
 			pcmSub.remove();

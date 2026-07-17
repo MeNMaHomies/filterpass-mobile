@@ -8,9 +8,10 @@ Expo SDK 57 client for **live spoof detection**: stream PCM audio to a session-s
 | -------------------------------------------- | ------------------------------------------------ |
 | [docs/README.md](docs/README.md)             | Index                                            |
 | [docs/tech-stack.md](docs/tech-stack.md)     | Frameworks, libraries, versions, tooling         |
-| [docs/architecture.md](docs/architecture.md) | App structure and live/call capture flow         |
+| [docs/architecture.md](docs/architecture.md) | App structure, live flow, TanStack Query layer   |
 | [docs/api.md](docs/api.md)                   | Backend REST + WebSocket contract                |
 | [docs/call-capture.md](docs/call-capture.md) | Android Call Scan (Accessibility + dual capture) |
+| [docs/react-query-migration.md](docs/react-query-migration.md) | REST server-state (Query) layout   |
 
 Agent guidelines: [CLAUDE.md](CLAUDE.md) (includes [@AGENTS.md](AGENTS.md)).
 

@@ -43,6 +43,11 @@ describe('formatSessionLabel', () => {
 		expect(formatSessionLabel(0.2, 0.5)).toBe('REAL');
 		expect(formatSessionLabel(0.7, 0.5)).toBe('SPOOF');
 	});
+
+	it('uses real_threshold band for UNCERTAIN', () => {
+		expect(formatSessionLabel(0.45, 0.6, 0.4)).toBe('UNCERTAIN');
+		expect(formatSessionLabel(0.35, 0.6, 0.4)).toBe('REAL');
+	});
 });
 
 describe('shortSessionId', () => {

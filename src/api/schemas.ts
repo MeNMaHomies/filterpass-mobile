@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { ApiError } from './errors';
+import { ClientErrorCode, type ClientErrorCodeName } from '@/lib/clientErrorCodes';
+import { sessionDefaultsSchema } from '@/features/settings/sessionDefaultsSchema';
+
+export { sessionDefaultsSchema };
 
 /** Session IDs from POST /sessions and history routes */
 export const sessionIdSchema = z
@@ -22,6 +26,7 @@ export function requireSessionId(sessionId: string): string {
 			0,
 			result.error.flatten(),
 			null,
+			ClientErrorCode.INVALID_SESSION_ID,
 		);
 	}
 	return result.data;
@@ -53,11 +58,9 @@ export const createSessionRequestSchema = z.object({
 	ema_alpha: z.number().min(0).max(1).optional(),
 	spoof_threshold: z.number().min(0).max(1).optional(),
 	vad_mode: z.number().int().min(0).max(3).optional(),
-	vad_frame_ms: z.union([
-		z.literal(10),
-		z.literal(20),
-		z.literal(30),
-	]).optional(),
+	vad_frame_ms: z
+		.union([z.literal(10), z.literal(20), z.literal(30)])
+		.optional(),
 	idle_timeout_s: z.number().positive().optional(),
 });
 
@@ -79,42 +82,6 @@ export const getInferenceBucketsParamsSchema = z.object({
 	to_ts: z.number().optional(),
 	bucket_s: z.number().int().positive().optional(),
 });
-
-/** Persisted device settings — validate on read/write from AsyncStorage */
-export const sessionDefaultsSchema = z
-	.object({
-		sample_rate: z.number().int().positive(),
-		chunk_duration_s: z.number().positive(),
-		ema_alpha: z.number().min(0.1).max(0.9),
-		spoof_threshold: z.number().min(0.1).max(0.9),
-		/** Client-only; scores in [real, spoof) are UNCERTAIN. */
-		real_threshold: z.number().min(0.05).max(0.85).optional(),
-		vad_mode: z.number().int().min(0).max(3).optional(),
-		vad_frame_ms: z
-			.union([z.literal(10), z.literal(20), z.literal(30)])
-			.optional(),
-	})
-	.transform((d) => {
-		const spoof = d.spoof_threshold;
-		let real =
-			d.real_threshold ??
-			Math.min(Math.max(spoof - 0.2, 0.1), spoof - 0.05);
-		if (real >= spoof) {
-			real = Math.max(0.05, spoof - 0.05);
-		}
-		return {
-			sample_rate: d.sample_rate,
-			chunk_duration_s: d.chunk_duration_s,
-			ema_alpha: d.ema_alpha,
-			real_threshold: Number(real.toFixed(2)),
-			spoof_threshold: spoof,
-			vad_mode: d.vad_mode ?? 2,
-			vad_frame_ms: d.vad_frame_ms ?? 30,
-		};
-	})
-	.refine((d) => d.real_threshold < d.spoof_threshold, {
-		message: 'real_threshold must be below spoof_threshold',
-	});
 
 export const createSessionResponseSchema = z.object({
 	session_id: sessionIdSchema,
@@ -260,6 +227,13 @@ export const historyEventsResponseSchema = z.object({
 	entries: z.array(historyEventSchema),
 });
 
+const PARAM_LABEL_TO_CODE: Record<string, ClientErrorCodeName> = {
+	'history list params': ClientErrorCode.INVALID_HISTORY_LIST_PARAMS,
+	'inference query params': ClientErrorCode.INVALID_INFERENCE_QUERY_PARAMS,
+	'inference bucket params': ClientErrorCode.INVALID_INFERENCE_BUCKET_PARAMS,
+	'history events params': ClientErrorCode.INVALID_HISTORY_EVENTS_PARAMS,
+};
+
 export function parseJsonMessage<T>(
 	raw: string,
 	schema: z.ZodType<T>,
@@ -285,6 +259,7 @@ export function parseRequestParams<T>(
 			0,
 			result.error.flatten(),
 			null,
+			PARAM_LABEL_TO_CODE[label] ?? null,
 		);
 	}
 	return result.data;

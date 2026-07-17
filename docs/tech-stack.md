@@ -71,8 +71,11 @@ Call Scan native pipeline (Kotlin): resample → 100 ms frames → align → equ
 | ------------------------------------------- | ----------------- | ------------------------------------------------- |
 | Fetch / WebSocket                           | platform builtins | REST via `src/api/client.ts`; WS in `src/api/ws/` |
 | `@react-native-async-storage/async-storage` | `2.2.0`           | Session defaults persistence                      |
-| `@react-native-community/netinfo`           | `12.0.1`          | Connectivity signals                              |
+| `@react-native-community/netinfo`           | `12.0.1`          | Connectivity + Query `onlineManager`              |
 | `@react-native-community/slider`            | `^5.2.0`          | Settings sliders                                  |
+| `@tanstack/react-query`                     | `^5.101.2`        | REST server-state cache (`src/queries/`)          |
+
+**Server state:** TanStack Query v5 for REST (complete). WebSockets / live capture stay outside Query. Details: [`react-query-migration.md`](./react-query-migration.md).
 
 Config: `EXPO_PUBLIC_API_URL` (see `.env.example`). Derived WS base in `src/config/env.ts` (`http`→`ws`, emulator `localhost`→`10.0.2.2`).
 

@@ -95,8 +95,24 @@ describe('formatApiError', () => {
 
 	it('maps backend model not ready', () => {
 		expect(
-			formatApiError(new ApiError('Backend model not ready', 0, null, null)),
+			formatApiError(
+				new ApiError(
+					'Backend model not ready',
+					0,
+					null,
+					null,
+					'backend_model_not_ready',
+				),
+			),
 		).toContain('model is not ready');
+	});
+
+	it('prefers clientCode over message prefix', () => {
+		expect(
+			formatApiError(
+				new ApiError('weird message', 0, null, null, 'invalid_session_id'),
+			),
+		).toBe('This session link is invalid.');
 	});
 
 	it('maps client invalid request body', () => {

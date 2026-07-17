@@ -1,18 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getHistorySession, getSessionInferences, parseSessionId } from '@/api';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { parseSessionId } from '@/api';
 import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
-import { formatApiError } from '@/lib/apiError';
 import {
-	messageForClientError,
+	messageForClientErrorCode,
 	REST_ERROR_MESSAGES,
 } from '@/lib/apiErrorMessages';
+import { ClientErrorCode } from '@/lib/clientErrorCodes';
+import { formatApiError } from '@/lib/apiError';
 import {
 	formatDurationFromTimestamps,
 	formatSessionLabel,
 	formatTimestamp,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
+import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
+import {
+	historyInferencesQueryOptions,
+	historySessionQueryOptions,
+} from '@/queries/historySession';
 
 export type SessionReportData = {
 	session: HistorySessionSummary | null;
@@ -23,69 +30,51 @@ export type SessionReportData = {
 	timeline: ChunkTimelineItem[];
 	loading: boolean;
 	error: string | null;
-	refresh: () => void;
+	refresh: () => Promise<void>;
 };
+
+const EMPTY_INFERENCES: HistoryInferenceEntry[] = [];
 
 export function useSessionReport(
 	sessionId: string | undefined,
 ): SessionReportData {
-	const [session, setSession] = useState<HistorySessionSummary | null>(null);
-	const [inferences, setInferences] = useState<HistoryInferenceEntry[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
 	const validatedSessionId = useMemo(
 		() => parseSessionId(sessionId),
 		[sessionId],
 	);
+	const { defaults } = useSessionDefaults();
+	const realThreshold = defaults.real_threshold;
 
-	const load = useCallback(async () => {
-		if (!sessionId) {
-			setLoading(false);
-			setError(REST_ERROR_MESSAGES.session_not_found);
-			return;
-		}
+	const enabled = Boolean(sessionId && validatedSessionId);
 
-		if (!validatedSessionId) {
-			setLoading(false);
-			setError(
-				messageForClientError('Invalid session ID') ??
-					'This session link is invalid.',
-			);
-			setSession(null);
-			setInferences([]);
-			return;
-		}
+	const [sessionQuery, inferencesQuery] = useQueries({
+		queries: [
+			{
+				...historySessionQueryOptions(validatedSessionId ?? ''),
+				enabled,
+			},
+			{
+				...historyInferencesQueryOptions(validatedSessionId ?? '', {
+					limit: 1000,
+				}),
+				enabled,
+			},
+		],
+	});
 
-		setLoading(true);
-		setError(null);
-
-		try {
-			const [sess, inf] = await Promise.all([
-				getHistorySession(validatedSessionId),
-				getSessionInferences(validatedSessionId, { limit: 1000 }),
-			]);
-			setSession(sess);
-			setInferences(inf.entries);
-		} catch (e) {
-			setError(formatApiError(e));
-			setSession(null);
-			setInferences([]);
-		} finally {
-			setLoading(false);
-		}
-	}, [sessionId, validatedSessionId]);
-
-	useEffect(() => {
-		load();
-	}, [load]);
+	const session = sessionQuery.data ?? null;
+	const inferences = inferencesQuery.data?.entries ?? EMPTY_INFERENCES;
 
 	const duration = session
 		? formatDurationFromTimestamps(session.created_at, session.closed_at)
 		: '—';
 
 	const label = session
-		? formatSessionLabel(session.avg_session_score, session.spoof_threshold)
+		? formatSessionLabel(
+				session.avg_session_score,
+				session.spoof_threshold,
+				realThreshold,
+			)
 		: '—';
 
 	const timeline: ChunkTimelineItem[] = useMemo(() => {
@@ -96,9 +85,29 @@ export function useSessionReport(
 			label: deriveSessionLabel(
 				entry.session_score,
 				session.spoof_threshold,
+				realThreshold,
 			),
 		}));
-	}, [inferences, session]);
+	}, [inferences, session, realThreshold]);
+
+	const validationError = useMemo(() => {
+		if (!sessionId) return REST_ERROR_MESSAGES.session_not_found;
+		if (sessionId && !validatedSessionId) {
+			return messageForClientErrorCode(ClientErrorCode.INVALID_SESSION_ID);
+		}
+		return null;
+	}, [sessionId, validatedSessionId]);
+
+	const queryError =
+		sessionQuery.error ?? inferencesQuery.error
+			? formatApiError(sessionQuery.error ?? inferencesQuery.error)
+			: null;
+
+	const resolvedError = validationError ?? queryError;
+	const resolvedLoading =
+		enabled &&
+		!validationError &&
+		(sessionQuery.isPending || inferencesQuery.isPending);
 
 	return {
 		session,
@@ -107,8 +116,11 @@ export function useSessionReport(
 		label,
 		chunkCount: session?.chunks_inferred ?? inferences.length,
 		timeline,
-		loading,
-		error,
-		refresh: load,
+		loading: resolvedLoading,
+		error: resolvedError,
+		refresh: async () => {
+			if (validationError) return;
+			await Promise.all([sessionQuery.refetch(), inferencesQuery.refetch()]);
+		},
 	};
 }
