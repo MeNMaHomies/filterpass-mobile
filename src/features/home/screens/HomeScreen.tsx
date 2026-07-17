@@ -67,7 +67,8 @@ export function HomeScreen() {
 					<Eyebrow>Start session</Eyebrow>
 					<Text style={styles.ctaTitle}>Live spoof detection</Text>
 					<Text style={styles.ctaBody}>
-						Mic capture streams to the detector. No account required.
+						Mic or Call Scan streams mixed PCM to the detector. No account
+						required.
 					</Text>
 					<Button
 						variant="primary"

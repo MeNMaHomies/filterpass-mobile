@@ -33,7 +33,10 @@ export function useCallCapture({
 }: UseCallCaptureOptions): CallCaptureController {
 	const available = Platform.OS === 'android';
 	const onPcmRef = useRef(onPcm);
-	onPcmRef.current = onPcm;
+
+	useEffect(() => {
+		onPcmRef.current = onPcm;
+	}, [onPcm]);
 
 	const [accessibility, setAccessibility] =
 		useState<AccessibilityStatus>(DISABLED_STATUS);

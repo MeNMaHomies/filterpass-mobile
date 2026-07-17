@@ -1,4 +1,5 @@
 export { MicButton } from './components/MicButton';
+export { CaptureModeToggle } from './components/CaptureModeToggle';
 export { useLiveSession } from './hooks/useLiveSession';
 export type {
 	LivePhase,

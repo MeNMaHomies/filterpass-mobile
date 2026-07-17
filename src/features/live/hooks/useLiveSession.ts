@@ -97,8 +97,11 @@ export function useLiveSession(): LiveSessionState {
 	const framesSeenRef = useRef(0);
 	const flushDerivedMetricsRef = useRef<() => void>(() => {});
 	const captureModeRef = useRef<CaptureMode>(captureMode);
-	captureModeRef.current = captureMode;
 	const activeCaptureRef = useRef<CaptureMode | null>(null);
+
+	useEffect(() => {
+		captureModeRef.current = captureMode;
+	}, [captureMode]);
 
 	useEffect(() => {
 		flushDerivedMetricsRef.current = throttle(() => {
