@@ -116,7 +116,7 @@ Place provider **outside** feature screens, **inside** `GestureHandlerRootView` 
 
 ## Migration phases
 
-### Phase 0 — Scaffold (no behavior change)
+### Phase 0 — Scaffold (no behavior change) ✅
 
 1. Add `@tanstack/react-query`.
 2. Create `src/queries/client.ts` (QueryClient singleton) + `src/queries/keys.ts`.

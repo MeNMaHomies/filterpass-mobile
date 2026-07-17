@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -19,8 +20,14 @@ import {
 } from '@expo-google-fonts/geist-mono';
 import { colors } from '@/theme/tokens';
 import { BackendHealthProvider } from '@/features/health';
+import {
+	queryClient,
+	setupReactQueryNative,
+	useReactQueryAppFocus,
+} from '@/queries';
 
 SplashScreen.preventAutoHideAsync();
+setupReactQueryNative();
 
 export default function RootLayout() {
 	const [fontsLoaded, fontError] = useFonts({
@@ -32,6 +39,8 @@ export default function RootLayout() {
 		GeistMono_500Medium,
 		GeistMono_600SemiBold,
 	});
+
+	useReactQueryAppFocus();
 
 	useEffect(() => {
 		if (fontsLoaded || fontError) {
@@ -46,19 +55,21 @@ export default function RootLayout() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
-				<BackendHealthProvider>
-					<BottomSheetModalProvider>
-						<StatusBar style="light" />
-						<Stack
-							screenOptions={{
-								headerShown: false,
-								contentStyle: { backgroundColor: colors.background },
-							}}
-						>
-							<Stack.Screen name="(tabs)" />
-						</Stack>
-					</BottomSheetModalProvider>
-				</BackendHealthProvider>
+				<QueryClientProvider client={queryClient}>
+					<BackendHealthProvider>
+						<BottomSheetModalProvider>
+							<StatusBar style="light" />
+							<Stack
+								screenOptions={{
+									headerShown: false,
+									contentStyle: { backgroundColor: colors.background },
+								}}
+							>
+								<Stack.Screen name="(tabs)" />
+							</Stack>
+						</BottomSheetModalProvider>
+					</BackendHealthProvider>
+				</QueryClientProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);
