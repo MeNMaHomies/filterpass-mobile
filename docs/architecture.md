@@ -38,6 +38,18 @@ Rules of thumb:
 - Screens do **not** call `fetch` / open sockets directly; feature hooks use `@/api`.
 - Prefer existing `AppShell`, `Card`, `Button`, charts over one-off chrome.
 - Wire types and Zod schemas stay aligned with `docs/api.md`.
+- **Server state (REST):** migrating to TanStack Query — see [`react-query-migration.md`](./react-query-migration.md). Until then, prefer shared fetchers in `@/api` over per-screen `useState` loaders.
+
+## Data fetching (current → target)
+
+| Concern | Current | Target |
+| ------- | ------- | ------ |
+| One-shot REST | `useAsyncResource` | `useQuery` |
+| History pages | `useHistorySessions` offset state | `useInfiniteQuery` |
+| `/health` | `BackendHealthProvider` | Query (+ thin façade optional) |
+| Live WS / PCM | `useLiveSession` | stays imperative |
+| Session defaults | `sessionDefaultsStore` | store or Query over AsyncStorage |
+
 
 ## Feature map
 

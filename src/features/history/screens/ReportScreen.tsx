@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import Svg, {
 	Path,
@@ -17,6 +16,11 @@ import {
 	StatusBadge,
 } from '@/components';
 import { useSessionReport } from '../hooks/useSessionReport';
+import {
+	SCORE_CHART_HEIGHT,
+	SCORE_CHART_WIDTH,
+	useReportAnalytics,
+} from '@/features/report/hooks/useReportAnalytics';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { scoreColor } from '@/lib/scoreColor';
 import { colors, spacing } from '@/theme/tokens';
@@ -26,24 +30,6 @@ import type { SessionLabel } from '@/types';
 type ReportScreenProps = {
 	sessionId?: string;
 };
-
-function buildScorePath(
-	scores: number[],
-	width: number,
-	height: number,
-): string {
-	if (scores.length === 0) return '';
-	const step = width / Math.max(scores.length - 1, 1);
-	const points = scores.map((score, i) => {
-		const safe = Number.isFinite(score)
-			? Math.min(1, Math.max(0, score))
-			: 0;
-		const x = i * step;
-		const y = height - safe * height;
-		return `${i === 0 ? 'M' : 'L'}${x},${y}`;
-	});
-	return points.join(' ');
-}
 
 export function ReportScreen({ sessionId }: ReportScreenProps) {
 	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
@@ -58,48 +44,14 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 		refresh,
 	} = useSessionReport(sessionId);
 
-	const scores = useMemo(
-		() => inferences.map((e) => e.session_score),
-		[inferences],
-	);
-
-	const linePath = useMemo(
-		() => buildScorePath(scores, 320, 80),
-		[scores],
-	);
-
-	const areaPath = useMemo(() => {
-		if (!linePath) return '';
-		return `${linePath} L320,100 L0,100 Z`;
-	}, [linePath]);
-
-	const realStats = useMemo(() => {
-		const realCount = timeline.filter((c) => c.label === 'REAL').length;
-		const realPct =
-			timeline.length > 0
-				? Math.round((realCount / timeline.length) * 100)
-				: 0;
-		return { realCount, realPct };
-	}, [timeline]);
-
-	const scoreSummary = useMemo(() => {
-		if (scores.length === 0) return 'No score data';
-		const min = Math.min(...scores);
-		const max = Math.max(...scores);
-		return `Score ranged ${min.toFixed(2)} to ${max.toFixed(2)}. ${realStats.realPct}% of chunks labeled REAL.`;
-	}, [scores, realStats.realPct]);
-
-	const rtfBuckets = useMemo(() => {
-		if (inferences.length === 0) return [0, 0, 0, 0, 0, 0];
-		const max = Math.max(...inferences.map((e) => e.rtf), 0.01);
-		const bins = [0, 0, 0, 0, 0, 0];
-		for (const e of inferences) {
-			const idx = Math.min(5, Math.floor((e.rtf / max) * 6));
-			bins[idx] += 1;
-		}
-		const peak = Math.max(...bins, 1);
-		return bins.map((n) => Math.round((n / peak) * 45));
-	}, [inferences]);
+	const {
+		scores,
+		linePath,
+		areaPath,
+		realStats,
+		scoreSummary,
+		rtfBuckets,
+	} = useReportAnalytics(inferences, timeline);
 
 	if (loading) {
 		return <ScreenLoader label="Loading session report" />;
@@ -158,8 +110,8 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 				{scores.length > 0 ? (
 					<Svg
 						width="100%"
-						height={100}
-						viewBox="0 0 320 100"
+						height={SCORE_CHART_HEIGHT}
+						viewBox={`0 0 ${SCORE_CHART_WIDTH} ${SCORE_CHART_HEIGHT}`}
 						style={styles.chart}
 						accessible={false}
 					>
@@ -180,7 +132,7 @@ export function ReportScreen({ sessionId }: ReportScreenProps) {
 						<Line
 							x1={0}
 							y1={50}
-							x2={320}
+							x2={SCORE_CHART_WIDTH}
 							y2={50}
 							stroke={colors.muted2}
 							strokeDasharray="4 4"

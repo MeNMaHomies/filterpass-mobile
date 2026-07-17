@@ -21,7 +21,7 @@ export type LiveSessionChannelHandlers = {
 
 /**
  * Open both live WebSockets and resolve only when both are open.
- * Callers must close channels on failure/teardown.
+ * On startup failure, both sockets are closed before rejecting.
  */
 export function connectLiveSession(
 	sessionId: string,
@@ -32,21 +32,31 @@ export function connectLiveSession(
 		let framesOpen = false;
 		let settled = false;
 
+		const fail = (error: Error) => {
+			if (settled) {
+				handlers.onError?.(error);
+				return;
+			}
+			settled = true;
+			output.close();
+			frames.close();
+			reject(error);
+		};
+
 		const output = connectOutputSocket(sessionId, {
 			onOpen: () => {
 				outputOpen = true;
 				tryReady();
 			},
 			onMessage: handlers.onOutput,
-			onClose: handlers.onClose,
-			onError: (e) => {
+			onClose: (err) => {
 				if (!settled) {
-					settled = true;
-					reject(e);
-				} else {
-					handlers.onError?.(e);
+					fail(err ?? new Error('Output WebSocket closed before ready'));
+					return;
 				}
+				handlers.onClose(err);
 			},
+			onError: fail,
 		});
 
 		const frames = connectFramesSocket(sessionId, {
@@ -55,15 +65,14 @@ export function connectLiveSession(
 				tryReady();
 			},
 			onMessage: handlers.onFrames,
-			onClose: handlers.onClose,
-			onError: (e) => {
+			onClose: (err) => {
 				if (!settled) {
-					settled = true;
-					reject(e);
-				} else {
-					handlers.onError?.(e);
+					fail(err ?? new Error('Frames WebSocket closed before ready'));
+					return;
 				}
+				handlers.onClose(err);
 			},
+			onError: fail,
 		});
 
 		function tryReady() {

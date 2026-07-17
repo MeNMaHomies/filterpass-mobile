@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sessionDefaultsSchema } from '@/api/schemas';
+import { sessionDefaultsSchema } from './sessionDefaultsSchema';
+import { clampSessionThresholds } from '@/lib/sessionThresholds';
 
 const STORAGE_KEY = '@filterpass/session_defaults';
 
@@ -69,24 +70,15 @@ export function withClampedThresholds(
 	defaults: SessionDefaults,
 	patch: Partial<Pick<SessionDefaults, 'real_threshold' | 'spoof_threshold'>>,
 ): SessionDefaults {
-	let real = patch.real_threshold ?? defaults.real_threshold;
-	let spoof = patch.spoof_threshold ?? defaults.spoof_threshold;
-	real = Math.min(0.85, Math.max(0.05, real));
-	spoof = Math.min(0.95, Math.max(0.1, spoof));
-
-	if (patch.real_threshold != null && real >= spoof) {
-		real = Math.max(0.05, spoof - 0.05);
-	}
-	if (patch.spoof_threshold != null && spoof <= real) {
-		spoof = Math.min(0.95, real + 0.05);
-	}
-	if (real >= spoof) {
-		real = Math.max(0.05, spoof - 0.05);
-	}
-
-	return {
-		...defaults,
-		real_threshold: Number(real.toFixed(2)),
-		spoof_threshold: Number(spoof.toFixed(2)),
-	};
+	const clamped = clampSessionThresholds(
+		{
+			real_threshold: patch.real_threshold ?? defaults.real_threshold,
+			spoof_threshold: patch.spoof_threshold ?? defaults.spoof_threshold,
+		},
+		{
+			real_threshold: defaults.real_threshold,
+			spoof_threshold: defaults.spoof_threshold,
+		},
+	);
+	return { ...defaults, ...clamped };
 }

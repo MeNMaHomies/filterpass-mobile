@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
 	View,
 	Text,
@@ -11,37 +11,16 @@ import { useRouter, type Href } from 'expo-router';
 import { Search } from 'lucide-react-native';
 import { EmptyState, ErrorBanner, Eyebrow, ScreenLoader } from '@/components';
 import { HistorySessionRow } from '../components/HistorySessionRow';
-import {
-	HistoryFilters,
-	hasActiveHistoryFilters,
-	sessionMatchesDateFilter,
-	type DateFilter,
-	type LabelFilter,
-} from '../components/HistoryFilters';
+import { HistoryFilters } from '../components/HistoryFilters';
 import { useHistorySessions } from '../hooks/useHistorySessions';
+import {
+	useHistoryQuery,
+	type HistoryListItem,
+} from '../hooks/useHistoryQuery';
 import { useBackendHealth } from '@/features/health';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
-import {
-	daySectionKey,
-	formatDaySectionLabel,
-} from '@/lib/formatSession';
-import type { HistorySession } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
-
-type DayHeaderItem = {
-	kind: 'header';
-	key: string;
-	title: string;
-};
-
-type SessionItem = {
-	kind: 'session';
-	key: string;
-	session: HistorySession;
-};
-
-type ListItem = DayHeaderItem | SessionItem;
 
 export function HistoryScreen() {
 	const router = useRouter();
@@ -56,60 +35,25 @@ export function HistoryScreen() {
 		refresh,
 		loadMore,
 	} = useHistorySessions();
-	const [query, setQuery] = useState('');
-	const [labelFilter, setLabelFilter] = useState<LabelFilter>('all');
-	const [dateFilter, setDateFilter] = useState<DateFilter>('all');
-
-	const filtersActive = hasActiveHistoryFilters(labelFilter, dateFilter, query);
-
-	const filtered = useMemo(() => {
-		const q = query.trim().toLowerCase();
-		const base = sessions.filter((s) => {
-			if (q && !s.id.toLowerCase().includes(q)) return false;
-			if (labelFilter !== 'all' && s.label !== labelFilter) return false;
-			if (!sessionMatchesDateFilter(s.sortTs, dateFilter)) return false;
-			return true;
-		});
-		return [...base].sort((a, b) => b.sortTs - a.sortTs);
-	}, [sessions, query, labelFilter, dateFilter]);
-
-	const spoofCount = useMemo(
-		() => filtered.filter((s) => s.label === 'SPOOF').length,
-		[filtered],
-	);
-
-	const listItems = useMemo(() => {
-		const items: ListItem[] = [];
-		let lastKey = '';
-		for (const session of filtered) {
-			const key = daySectionKey(session.sortTs);
-			if (key !== lastKey) {
-				items.push({
-					kind: 'header',
-					key: `h-${key}`,
-					title: formatDaySectionLabel(session.sortTs),
-				});
-				lastKey = key;
-			}
-			items.push({
-				kind: 'session',
-				key: session.id,
-				session,
-			});
-		}
-		return items;
-	}, [filtered]);
-
-	const stickyHeaderIndices = useMemo(
-		() =>
-			listItems
-				.map((item, index) => (item.kind === 'header' ? index : -1))
-				.filter((index) => index >= 0),
-		[listItems],
-	);
+	const {
+		query,
+		setQuery,
+		labelFilter,
+		setLabelFilter,
+		dateFilter,
+		setDateFilter,
+		filtersActive,
+		filtered,
+		spoofCount,
+		listItems,
+		stickyHeaderIndices,
+		clearFilters,
+		emptyTitle,
+		emptyDescription,
+	} = useHistoryQuery(sessions);
 
 	const renderItem = useCallback(
-		({ item, index }: { item: ListItem; index: number }) => {
+		({ item, index }: { item: HistoryListItem; index: number }) => {
 			if (item.kind === 'header') {
 				return (
 					<View style={styles.sectionHeader}>
@@ -132,22 +76,11 @@ export function HistoryScreen() {
 		[],
 	);
 
-	const keyExtractor = useCallback((item: ListItem) => item.key, []);
+	const keyExtractor = useCallback((item: HistoryListItem) => item.key, []);
 
 	const openLive = useCallback(() => {
 		router.push('/live' as Href);
 	}, [router]);
-
-	const clearFilters = useCallback(() => {
-		setQuery('');
-		setLabelFilter('all');
-		setDateFilter('all');
-	}, []);
-
-	const emptyTitle = filtersActive ? 'No matches' : 'No sessions found';
-	const emptyDescription = filtersActive
-		? 'Try clearing search or filters.'
-		: 'Completed live sessions will appear here.';
 
 	const listHeader = useMemo(
 		() => (
@@ -229,6 +162,9 @@ export function HistoryScreen() {
 			refresh,
 			openLive,
 			clearFilters,
+			setQuery,
+			setLabelFilter,
+			setDateFilter,
 		],
 	);
 

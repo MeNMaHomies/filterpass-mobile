@@ -7,10 +7,8 @@ import {
 import { createSession, deleteSession } from '@/api';
 import { type FramesSocket, type OutputSocket, WsCloseError } from '@/api/ws';
 import { useBackendHealth } from '@/features/health';
-import {
-	loadSessionDefaults,
-	type SessionDefaults,
-} from '@/features/settings/sessionDefaults';
+import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
+import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
 import {
 	formatApiError,
 	formatWsFramesError,
@@ -23,7 +21,6 @@ import {
 	hapticWarning,
 } from '@/lib/haptics';
 import { throttle } from '@/lib/throttle';
-import type { SessionLabel } from '@/types';
 import { useMicCapture } from '../capture/useMicCapture';
 import { CHART_FLUSH_MS } from '../domain/liveMetrics';
 import {
@@ -45,51 +42,59 @@ import { useCallCapture } from './useCallCapture';
 export type { LivePhase, CaptureMode, ConnectionStatus } from '../types';
 export type { LiveSessionState };
 
+type SessionMeta = {
+	sessionId: string | null;
+	spoofThreshold: number;
+	realThreshold: number;
+};
+
+const INITIAL_META: SessionMeta = {
+	sessionId: null,
+	spoofThreshold: 0.5,
+	realThreshold: 0.4,
+};
+
+/**
+ * Live session orchestrator: health gate → create session → dual WS → capture.
+ * Domain state lives in one `model`; chart fields flush on a throttle.
+ */
 export function useLiveSession(): LiveSessionState {
 	const { ensureReady } = useBackendHealth();
-	const [phase, setPhase] = useState<LivePhase>('idle');
 	const [captureMode, setCaptureModeState] = useState<CaptureMode>('mic');
-	const [sessionId, setSessionId] = useState<string | null>(null);
-	const [sessionScore, setSessionScore] = useState(0);
-	const [chunkIdx, setChunkIdx] = useState(0);
-	const [label, setLabel] = useState<SessionLabel>('REAL');
-	const [chunkHistory, setChunkHistory] = useState<number[]>([]);
-	const [bufferFillSamples, setBufferFillSamples] = useState(0);
-	const [bufferTargetSamples, setBufferTargetSamples] = useState(0);
-	const [spoofThreshold, setSpoofThreshold] = useState(0.5);
-	const [realThreshold, setRealThreshold] = useState(0.4);
-	const [framesSeen, setFramesSeen] = useState(0);
-	const [lastRtf, setLastRtf] = useState<number | null>(null);
-	const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
-	const [defaults, setDefaults] = useState<SessionDefaults | null>(null);
+	const [model, setModel] = useState<LiveSessionModel>(
+		createInitialLiveSessionModel,
+	);
+	const [meta, setMeta] = useState<SessionMeta>(INITIAL_META);
+	const [chartHistory, setChartHistory] = useState<number[]>([]);
+	const [chartFramesSeen, setChartFramesSeen] = useState(0);
+	const { defaults } = useSessionDefaults();
 	const [error, setError] = useState<string | null>(null);
 
 	const framesRef = useRef<FramesSocket | null>(null);
 	const outputRef = useRef<OutputSocket | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
-	const spoofThresholdRef = useRef(0.5);
-	const realThresholdRef = useRef(0.4);
+	const spoofThresholdRef = useRef(INITIAL_META.spoofThreshold);
+	const realThresholdRef = useRef(INITIAL_META.realThreshold);
 	const stoppingRef = useRef(false);
-	const modelRef = useRef<LiveSessionModel>(createInitialLiveSessionModel());
-	const chunkHistoryRef = useRef<number[]>([]);
-	const framesSeenRef = useRef(0);
-	const flushDerivedMetricsRef = useRef<() => void>(() => {});
+	const modelRef = useRef(model);
+	const flushChartRef = useRef<() => void>(() => {});
 	const captureModeRef = useRef<CaptureMode>(captureMode);
 	const activeCaptureRef = useRef<CaptureMode | null>(null);
+	const stopCaptureRef = useRef<() => Promise<void>>(async () => {});
+
+	useEffect(() => {
+		modelRef.current = model;
+	}, [model]);
 
 	useEffect(() => {
 		captureModeRef.current = captureMode;
 	}, [captureMode]);
 
 	useEffect(() => {
-		flushDerivedMetricsRef.current = throttle(() => {
-			setChunkHistory([...chunkHistoryRef.current]);
-			setFramesSeen(framesSeenRef.current);
+		flushChartRef.current = throttle(() => {
+			setChartHistory([...modelRef.current.metrics.chunkHistory]);
+			setChartFramesSeen(modelRef.current.metrics.framesSeen);
 		}, CHART_FLUSH_MS);
-	}, []);
-
-	const flushDerivedMetrics = useCallback(() => {
-		flushDerivedMetricsRef.current();
 	}, []);
 
 	const sendPcm = useCallback((data: ArrayBuffer) => {
@@ -98,17 +103,29 @@ export function useLiveSession(): LiveSessionState {
 
 	const callCapture = useCallCapture({ onPcm: sendPcm });
 	const micCapture = useMicCapture({
-		sampleRate: defaults?.sample_rate ?? 16000,
+		sampleRate: defaults.sample_rate,
 		onPcm: sendPcm,
 	});
 
 	useEffect(() => {
-		loadSessionDefaults().then(setDefaults);
-	}, []);
+		stopCaptureRef.current = async () => {
+			const mode = activeCaptureRef.current ?? captureModeRef.current;
+			try {
+				if (mode === 'call') {
+					await callCapture.stop();
+				} else {
+					await micCapture.stop();
+				}
+			} catch {
+				// stream may not be running
+			}
+			activeCaptureRef.current = null;
+		};
+	}, [callCapture, micCapture]);
 
 	const setCaptureMode = useCallback(
 		(mode: CaptureMode) => {
-			if (phase !== 'idle') return;
+			if (modelRef.current.phase !== 'idle') return;
 			if (mode === 'call' && Platform.OS !== 'android') {
 				setError('Call Scan is only available on Android showcase builds.');
 				return;
@@ -119,22 +136,13 @@ export function useLiveSession(): LiveSessionState {
 				callCapture.refreshAccessibility();
 			}
 		},
-		[phase, callCapture],
+		[callCapture],
 	);
 
 	const teardown = useCallback(async () => {
 		stoppingRef.current = true;
-		const mode = activeCaptureRef.current ?? captureModeRef.current;
-		try {
-			if (mode === 'call') {
-				await callCapture.stop();
-			} else {
-				await micCapture.stop();
-			}
-		} catch {
-			// stream may not be running
-		}
-		activeCaptureRef.current = null;
+		await stopCaptureRef.current();
+
 		framesRef.current?.close();
 		outputRef.current?.close();
 		framesRef.current = null;
@@ -150,28 +158,26 @@ export function useLiveSession(): LiveSessionState {
 			}
 		}
 
-		setSessionId(null);
-		setPhase('idle');
-		modelRef.current = createInitialLiveSessionModel();
-		setSessionScore(0);
-		setChunkIdx(0);
-		setLabel('REAL');
-		chunkHistoryRef.current = [];
-		framesSeenRef.current = 0;
-		setChunkHistory([]);
-		setBufferFillSamples(0);
-		setBufferTargetSamples(0);
-		setFramesSeen(0);
-		setLastRtf(null);
-		setLastLatencyMs(null);
+		const next = createInitialLiveSessionModel();
+		modelRef.current = next;
+		setModel(next);
+		setMeta(INITIAL_META);
+		setChartHistory([]);
+		setChartFramesSeen(0);
 		stoppingRef.current = false;
-	}, [micCapture, callCapture]);
+	}, []);
 
+	// Full teardown on unmount (capture + sockets + REST delete).
 	useEffect(() => {
 		return () => {
+			stoppingRef.current = true;
+			void stopCaptureRef.current();
 			framesRef.current?.close();
 			outputRef.current?.close();
+			framesRef.current = null;
+			outputRef.current = null;
 			const id = sessionIdRef.current;
+			sessionIdRef.current = null;
 			if (id) {
 				deleteSession(id).catch(() => {});
 			}
@@ -189,22 +195,21 @@ export function useLiveSession(): LiveSessionState {
 	);
 
 	const start = useCallback(async () => {
-		if (phase !== 'idle') return;
+		if (modelRef.current.phase !== 'idle') return;
 		void hapticLight();
 		setError(null);
-		setPhase('connecting');
-		modelRef.current = {
+		const connecting = {
 			...createInitialLiveSessionModel(),
-			phase: 'connecting',
+			phase: 'connecting' as LivePhase,
 		};
+		modelRef.current = connecting;
+		setModel(connecting);
 
 		const mode = captureModeRef.current;
 
 		try {
 			await ensureReady();
-
-			const sessionDefaults = await loadSessionDefaults();
-			setDefaults(sessionDefaults);
+			const sessionDefaults = await ensureSessionDefaults();
 
 			if (mode === 'call') {
 				if (Platform.OS !== 'android') {
@@ -217,8 +222,9 @@ export function useLiveSession(): LiveSessionState {
 
 			const { granted } = await requestRecordingPermissionsAsync();
 			if (!granted) {
-				setPhase('idle');
-				modelRef.current = createInitialLiveSessionModel();
+				const idle = createInitialLiveSessionModel();
+				modelRef.current = idle;
+				setModel(idle);
 				setError('Microphone permission is required for live detection.');
 				return;
 			}
@@ -239,12 +245,27 @@ export function useLiveSession(): LiveSessionState {
 
 			const id = created.session_id;
 			sessionIdRef.current = id;
-			setSessionId(id);
-			setSpoofThreshold(created.config.spoof_threshold);
 			spoofThresholdRef.current = created.config.spoof_threshold;
-			setRealThreshold(sessionDefaults.real_threshold);
 			realThresholdRef.current = sessionDefaults.real_threshold;
-			setBufferTargetSamples(created.config.chunk_samples);
+			setMeta({
+				sessionId: id,
+				spoofThreshold: created.config.spoof_threshold,
+				realThreshold: sessionDefaults.real_threshold,
+			});
+			setModel((prev) => ({
+				...prev,
+				metrics: {
+					...prev.metrics,
+					bufferTargetSamples: created.config.chunk_samples,
+				},
+			}));
+			modelRef.current = {
+				...modelRef.current,
+				metrics: {
+					...modelRef.current.metrics,
+					bufferTargetSamples: created.config.chunk_samples,
+				},
+			};
 
 			const channels = await connectLiveSession(id, {
 				onClose: handleWsClose,
@@ -268,25 +289,13 @@ export function useLiveSession(): LiveSessionState {
 					}
 
 					modelRef.current = result.state;
-					setPhase(result.state.phase);
-
-					if (msg.type === 'warmup') {
-						setBufferFillSamples(result.state.metrics.bufferFillSamples);
-						setBufferTargetSamples(result.state.metrics.bufferTargetSamples);
-						return;
-					}
+					setModel(result.state);
 
 					if (msg.type === 'score') {
 						if (result.effect.type === 'haptic_spoof') {
 							void hapticWarning();
 						}
-						setSessionScore(result.state.metrics.sessionScore);
-						setChunkIdx(result.state.metrics.chunkIdx);
-						setLabel(result.state.metrics.label);
-						setLastRtf(result.state.metrics.lastRtf);
-						setLastLatencyMs(result.state.metrics.lastLatencyMs);
-						chunkHistoryRef.current = result.state.metrics.chunkHistory;
-						flushDerivedMetrics();
+						flushChartRef.current();
 					}
 				},
 				onFrames: (msg) => {
@@ -307,8 +316,7 @@ export function useLiveSession(): LiveSessionState {
 					}
 
 					modelRef.current = result.state;
-					framesSeenRef.current = result.state.metrics.framesSeen;
-					flushDerivedMetrics();
+					flushChartRef.current();
 				},
 			});
 
@@ -323,20 +331,13 @@ export function useLiveSession(): LiveSessionState {
 			}
 		} catch (e) {
 			void hapticError();
-			setPhase('idle');
-			modelRef.current = createInitialLiveSessionModel();
+			const idle = createInitialLiveSessionModel();
+			modelRef.current = idle;
+			setModel(idle);
 			setError(formatApiError(e));
 			await teardown();
 		}
-	}, [
-		phase,
-		micCapture,
-		callCapture,
-		teardown,
-		handleWsClose,
-		flushDerivedMetrics,
-		ensureReady,
-	]);
+	}, [micCapture, callCapture, teardown, handleWsClose, ensureReady]);
 
 	const stop = useCallback(async () => {
 		void hapticMedium();
@@ -351,22 +352,24 @@ export function useLiveSession(): LiveSessionState {
 		openAccessibilitySettings: callCapture.openAccessibilitySettings,
 	};
 
+	const { metrics, phase } = model;
+
 	return {
 		phase,
 		captureMode,
 		setCaptureMode,
-		sessionId,
-		sessionScore,
-		chunkIdx,
-		label,
-		chunkHistory,
-		bufferFillSamples,
-		bufferTargetSamples,
-		spoofThreshold,
-		realThreshold,
-		framesSeen,
-		lastRtf,
-		lastLatencyMs,
+		sessionId: meta.sessionId,
+		sessionScore: metrics.sessionScore,
+		chunkIdx: metrics.chunkIdx,
+		label: metrics.label,
+		chunkHistory: chartHistory,
+		bufferFillSamples: metrics.bufferFillSamples,
+		bufferTargetSamples: metrics.bufferTargetSamples,
+		spoofThreshold: meta.spoofThreshold,
+		realThreshold: meta.realThreshold,
+		framesSeen: chartFramesSeen,
+		lastRtf: metrics.lastRtf,
+		lastLatencyMs: metrics.lastLatencyMs,
 		connectionStatus: deriveConnectionStatus(phase),
 		defaults,
 		error,

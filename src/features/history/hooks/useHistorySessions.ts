@@ -8,7 +8,7 @@ import {
 	shortSessionId,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { loadSessionDefaults } from '@/features/settings/sessionDefaults';
+import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
 
 const PAGE_SIZE = 50;
 
@@ -65,7 +65,7 @@ export function useHistorySessions(): HistorySessionsState {
 
 		try {
 			if (mode !== 'more') {
-				const defaults = await loadSessionDefaults();
+				const defaults = await ensureSessionDefaults();
 				realThresholdRef.current = defaults.real_threshold;
 			}
 

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import {
 	ScrollView,
 	View,
@@ -16,111 +15,30 @@ import {
 } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import { apiBaseUrl } from '@/config/env';
-import { hapticError, hapticSuccess } from '@/lib/haptics';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 import { ThresholdBand } from '../components/ThresholdBand';
 import { SettingSelect } from '../components/SettingSelect';
-import {
-	API_SESSION_DEFAULTS,
-	VAD_FRAME_MS_OPTIONS,
-	VAD_MODE_OPTIONS,
-	loadSessionDefaults,
-	resetSessionDefaults,
-	saveSessionDefaults,
-	withClampedThresholds,
-	type SessionDefaults,
-	type VadFrameMs,
-} from '../sessionDefaults';
-
-function formatThreshold(value: number): string {
-	return value.toFixed(2);
-}
+import { VAD_FRAME_MS_OPTIONS, VAD_MODE_OPTIONS, type VadFrameMs } from '../sessionDefaults';
+import { useSettingsForm } from '../hooks/useSettingsForm';
 
 export function SettingsScreen() {
 	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
-	const [defaults, setDefaults] = useState<SessionDefaults>(
-		API_SESSION_DEFAULTS,
-	);
-	const [realText, setRealText] = useState(
-		formatThreshold(API_SESSION_DEFAULTS.real_threshold),
-	);
-	const [spoofText, setSpoofText] = useState(
-		formatThreshold(API_SESSION_DEFAULTS.spoof_threshold),
-	);
-	const [loaded, setLoaded] = useState(false);
-	const [saved, setSaved] = useState(false);
-	const [persistenceError, setPersistenceError] = useState<string | null>(null);
-
-	useEffect(() => {
-		loadSessionDefaults().then((d) => {
-			setDefaults(d);
-			setRealText(formatThreshold(d.real_threshold));
-			setSpoofText(formatThreshold(d.spoof_threshold));
-			setLoaded(true);
-		});
-	}, []);
-
-	const applyThresholds = useCallback(
-		(patch: Partial<Pick<SessionDefaults, 'real_threshold' | 'spoof_threshold'>>) => {
-			setDefaults((d) => {
-				const next = withClampedThresholds(d, patch);
-				setRealText(formatThreshold(next.real_threshold));
-				setSpoofText(formatThreshold(next.spoof_threshold));
-				return next;
-			});
-		},
-		[],
-	);
-
-	const commitRealText = useCallback(() => {
-		const parsed = Number.parseFloat(realText);
-		if (!Number.isFinite(parsed)) {
-			setRealText(formatThreshold(defaults.real_threshold));
-			return;
-		}
-		applyThresholds({ real_threshold: parsed });
-	}, [applyThresholds, defaults.real_threshold, realText]);
-
-	const commitSpoofText = useCallback(() => {
-		const parsed = Number.parseFloat(spoofText);
-		if (!Number.isFinite(parsed)) {
-			setSpoofText(formatThreshold(defaults.spoof_threshold));
-			return;
-		}
-		applyThresholds({ spoof_threshold: parsed });
-	}, [applyThresholds, defaults.spoof_threshold, spoofText]);
-
-	const handleSave = useCallback(async () => {
-		setPersistenceError(null);
-		try {
-			await saveSessionDefaults(defaults);
-			void hapticSuccess();
-			setSaved(true);
-			setTimeout(() => setSaved(false), 2000);
-		} catch {
-			void hapticError();
-			setSaved(false);
-			setPersistenceError(
-				'Could not save settings. Restart the app and try again.',
-			);
-		}
-	}, [defaults]);
-
-	const handleReset = useCallback(async () => {
-		setPersistenceError(null);
-		try {
-			const d = await resetSessionDefaults();
-			setDefaults(d);
-			setRealText(formatThreshold(d.real_threshold));
-			setSpoofText(formatThreshold(d.spoof_threshold));
-		} catch {
-			void hapticError();
-			setPersistenceError(
-				'Could not reset settings. Restart the app and try again.',
-			);
-		}
-	}, []);
+	const {
+		defaults,
+		realText,
+		spoofText,
+		loaded,
+		saved,
+		persistenceError,
+		setDefaults,
+		setRealText,
+		setSpoofText,
+		commitRealText,
+		commitSpoofText,
+		handleSave,
+		handleReset,
+	} = useSettingsForm();
 
 	if (!loaded) {
 		return <ScreenLoader label="Loading settings" />;

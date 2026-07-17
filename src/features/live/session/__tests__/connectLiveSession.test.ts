@@ -36,7 +36,10 @@ describe('connectLiveSession', () => {
 			onFrames: jest.fn(),
 			onClose: jest.fn(),
 		});
-		MockWebSocket.instances[0].simulateError();
+		const [first, second] = MockWebSocket.instances;
+		first.simulateError();
 		await expect(pending).rejects.toThrow(/WebSocket error/);
+		expect(first.readyState).toBe(MockWebSocket.CLOSED);
+		expect(second.readyState).toBe(MockWebSocket.CLOSED);
 	});
 });

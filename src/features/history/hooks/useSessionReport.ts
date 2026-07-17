@@ -1,18 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { getHistorySession, getSessionInferences, parseSessionId } from '@/api';
 import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
-import { formatApiError } from '@/lib/apiError';
 import {
-	messageForClientError,
+	messageForClientErrorCode,
 	REST_ERROR_MESSAGES,
 } from '@/lib/apiErrorMessages';
+import { ClientErrorCode } from '@/lib/clientErrorCodes';
 import {
 	formatDurationFromTimestamps,
 	formatSessionLabel,
 	formatTimestamp,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
+import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
+import { useAsyncResource } from '@/hooks/useAsyncResource';
+
+export type SessionReportPayload = {
+	session: HistorySessionSummary | null;
+	inferences: HistoryInferenceEntry[];
+	realThreshold: number;
+};
+
+const EMPTY_REPORT: SessionReportPayload = {
+	session: null,
+	inferences: [],
+	realThreshold: 0.4,
+};
 
 export type SessionReportData = {
 	session: HistorySessionSummary | null;
@@ -23,69 +37,57 @@ export type SessionReportData = {
 	timeline: ChunkTimelineItem[];
 	loading: boolean;
 	error: string | null;
-	refresh: () => void;
+	refresh: () => Promise<void>;
 };
 
 export function useSessionReport(
 	sessionId: string | undefined,
 ): SessionReportData {
-	const [session, setSession] = useState<HistorySessionSummary | null>(null);
-	const [inferences, setInferences] = useState<HistoryInferenceEntry[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
 	const validatedSessionId = useMemo(
 		() => parseSessionId(sessionId),
 		[sessionId],
 	);
+	const realThresholdRef = useRef(0.4);
 
-	const load = useCallback(async () => {
-		if (!sessionId) {
-			setLoading(false);
-			setError(REST_ERROR_MESSAGES.session_not_found);
-			return;
-		}
+	const load = useCallback(async (): Promise<SessionReportPayload> => {
+		const defaults = await ensureSessionDefaults();
+		realThresholdRef.current = defaults.real_threshold;
 
-		if (!validatedSessionId) {
-			setLoading(false);
-			setError(
-				messageForClientError('Invalid session ID') ??
-					'This session link is invalid.',
-			);
-			setSession(null);
-			setInferences([]);
-			return;
-		}
+		const [sess, inf] = await Promise.all([
+			getHistorySession(validatedSessionId!),
+			getSessionInferences(validatedSessionId!, { limit: 1000 }),
+		]);
 
-		setLoading(true);
-		setError(null);
+		return {
+			session: sess,
+			inferences: inf.entries,
+			realThreshold: defaults.real_threshold,
+		};
+	}, [validatedSessionId]);
 
-		try {
-			const [sess, inf] = await Promise.all([
-				getHistorySession(validatedSessionId),
-				getSessionInferences(validatedSessionId, { limit: 1000 }),
-			]);
-			setSession(sess);
-			setInferences(inf.entries);
-		} catch (e) {
-			setError(formatApiError(e));
-			setSession(null);
-			setInferences([]);
-		} finally {
-			setLoading(false);
-		}
-	}, [sessionId, validatedSessionId]);
+	const enabled = Boolean(sessionId && validatedSessionId);
+	const {
+		data,
+		loading,
+		error,
+		refresh,
+		setData,
+	} = useAsyncResource(EMPTY_REPORT, load, { enabled });
 
-	useEffect(() => {
-		load();
-	}, [load]);
+	const session = data.session;
+	const inferences = data.inferences;
+	const realThreshold = data.realThreshold;
 
 	const duration = session
 		? formatDurationFromTimestamps(session.created_at, session.closed_at)
 		: '—';
 
 	const label = session
-		? formatSessionLabel(session.avg_session_score, session.spoof_threshold)
+		? formatSessionLabel(
+				session.avg_session_score,
+				session.spoof_threshold,
+				realThreshold,
+			)
 		: '—';
 
 	const timeline: ChunkTimelineItem[] = useMemo(() => {
@@ -96,9 +98,21 @@ export function useSessionReport(
 			label: deriveSessionLabel(
 				entry.session_score,
 				session.spoof_threshold,
+				realThreshold,
 			),
 		}));
-	}, [inferences, session]);
+	}, [inferences, session, realThreshold]);
+
+	const validationError = useMemo(() => {
+		if (!sessionId) return REST_ERROR_MESSAGES.session_not_found;
+		if (sessionId && !validatedSessionId) {
+			return messageForClientErrorCode(ClientErrorCode.INVALID_SESSION_ID);
+		}
+		return null;
+	}, [sessionId, validatedSessionId]);
+
+	const resolvedError = validationError ?? error;
+	const resolvedLoading = enabled && !validationError && loading;
 
 	return {
 		session,
@@ -107,8 +121,14 @@ export function useSessionReport(
 		label,
 		chunkCount: session?.chunks_inferred ?? inferences.length,
 		timeline,
-		loading,
-		error,
-		refresh: load,
+		loading: resolvedLoading,
+		error: resolvedError,
+		refresh: async () => {
+			if (validationError) {
+				setData(EMPTY_REPORT);
+				return;
+			}
+			await refresh();
+		},
 	};
 }

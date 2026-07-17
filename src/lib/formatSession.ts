@@ -1,5 +1,4 @@
-import type { SessionLabel } from '@/types';
-import { deriveSessionLabel } from '@/lib/sessionLabel';
+import { formatSessionLabel as formatSessionLabelBase } from '@/lib/sessionLabel';
 
 const timeFormatter = new Intl.DateTimeFormat(undefined, {
 	hour: '2-digit',
@@ -29,13 +28,8 @@ export function formatAgo(ts: number, now = Date.now() / 1000): string {
 	return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export function formatSessionLabel(
-	avgSessionScore: number | null,
-	spoofThreshold: number,
-): SessionLabel | '—' {
-	if (avgSessionScore === null) return '—';
-	return deriveSessionLabel(avgSessionScore, spoofThreshold);
-}
+/** Prefer importing from `@/lib/sessionLabel`; re-export for existing call sites. */
+export const formatSessionLabel = formatSessionLabelBase;
 
 export function shortSessionId(sessionId: string): string {
 	return sessionId.length > 8 ? sessionId.slice(0, 8) : sessionId;

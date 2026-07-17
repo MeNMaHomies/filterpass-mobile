@@ -55,7 +55,7 @@ export type LiveSessionState = {
 	lastRtf: number | null;
 	lastLatencyMs: number | null;
 	connectionStatus: ConnectionStatus;
-	defaults: SessionDefaults | null;
+	defaults: SessionDefaults;
 	error: string | null;
 	callScan: CallScanSetup;
 	start: () => Promise<void>;

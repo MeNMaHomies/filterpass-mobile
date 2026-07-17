@@ -76,8 +76,8 @@ export function useCallCapture({
 				setLastStatus(event);
 				if (event.type === 'accessibility') {
 					setAccessibility((prev) => {
-						const enabled = Boolean(event.enabled);
-						const connected = Boolean(event.connected);
+						const enabled = event.enabled;
+						const connected = event.connected;
 						if (prev.enabled === enabled && prev.connected === connected) {
 							return prev;
 						}

@@ -3,7 +3,7 @@ import type { SessionLabel } from '@/types';
 /**
  * Derive label from session_score.
  * Backend only stores spoof_threshold; real_threshold is a client-side band
- * (scores in [real, spoof) → UNCERTAIN). Omit realThreshold for binary labels.
+ * (scores in [real, spoof) → UNCERTAIN).
  */
 export function deriveSessionLabel(
 	sessionScore: number,
@@ -19,4 +19,14 @@ export function deriveSessionLabel(
 		return 'UNCERTAIN';
 	}
 	return 'REAL';
+}
+
+/** Null-safe label for session summaries (Home / History / Report). */
+export function formatSessionLabel(
+	avgSessionScore: number | null,
+	spoofThreshold: number,
+	realThreshold?: number,
+): SessionLabel | '—' {
+	if (avgSessionScore === null) return '—';
+	return deriveSessionLabel(avgSessionScore, spoofThreshold, realThreshold);
 }
