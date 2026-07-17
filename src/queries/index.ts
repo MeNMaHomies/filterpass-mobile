@@ -5,3 +5,8 @@ export {
 	fetchHealthyBackend,
 	healthQueryOptions,
 } from './health';
+export {
+	HISTORY_PAGE_SIZE,
+	fetchHistorySessionsPage,
+	historySessionsInfiniteOptions,
+} from './history';

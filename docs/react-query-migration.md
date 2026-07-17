@@ -137,26 +137,12 @@ Place provider **outside** feature screens, **inside** `GestureHandlerRootView` 
 
 **Exit:** single `/health` cache; Live start uses `fetchQuery`; offline still clears error to offlineBanner.
 
-### Phase 2 — History list (infinite query)
+### Phase 2 — History list (infinite query) ✅
 
-Replace `useHistorySessions` offset state with `useInfiniteQuery`:
+Replace `useHistorySessions` offset state with `useInfiniteQuery` via
+`historySessionsInfiniteOptions()` in `src/queries/history.ts`.
 
-```ts
-useInfiniteQuery({
-  queryKey: queryKeys.history.sessions({ limit: 50 }),
-  queryFn: ({ pageParam }) =>
-    listHistorySessions({ limit: 50, offset: pageParam }),
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, _pages, lastOffset) =>
-    lastPage.length < 50 ? undefined : lastOffset + lastPage.length,
-})
-```
-
-- Map pages → `HistorySession[]` in the feature hook (keep `real_threshold` via settings query or `ensureSessionDefaults`).
-- `refresh` → `refetch`; `loadMore` → `fetchNextPage`.
-- Home “recent sessions” should **read the same key family** or a sibling key invalidated together — avoid two independent list caches drifting.
-
-**Exit:** History pagination via Query; pull-to-refresh works; `useAsyncResource` unused here.
+**Exit:** History pagination via Query; pull-to-refresh works.
 
 ### Phase 3 — Session report
 
