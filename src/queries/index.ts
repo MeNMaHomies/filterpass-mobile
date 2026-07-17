@@ -14,3 +14,8 @@ export {
 	historySessionQueryOptions,
 	historyInferencesQueryOptions,
 } from './historySession';
+export {
+	homeActiveSessionsQueryOptions,
+	homeRecentSessionsQueryOptions,
+	homeBucketsQueryOptions,
+} from './home';

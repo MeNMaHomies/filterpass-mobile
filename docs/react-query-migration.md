@@ -151,24 +151,12 @@ compose in `useSessionReport` via `useQueries`.
 
 **Exit:** Report shares session entity cache keys with future consumers.
 
-### Phase 4 — Home overview
+### Phase 4 — Home overview ✅
 
-Stop one mega-fetch blob. Prefer:
+Parallel `useQueries` sharing `health` + history session/bucket keys via
+`src/queries/home.ts`.
 
-```ts
-useQueries({
-  queries: [
-    { queryKey: queryKeys.health, queryFn: getHealth },
-    { queryKey: queryKeys.history.sessions({ only_closed: false, limit: 100 }), … },
-    { queryKey: queryKeys.history.buckets({ from_ts, to_ts, bucket_s: 3600 }), … },
-    { queryKey: queryKeys.history.sessions({ limit: 3 }), … },
-  ],
-})
-```
-
-Or keep `useHomeOverview` but implement with `Promise.all` inside **one** `queryFn` keyed `['home','overview', dayBucket]` — simpler UI, worse sharing. Prefer parallel queries for cache reuse with History/Health.
-
-**Exit:** Home KPIs use shared health + history keys; tab switches feel instant when warm.
+**Exit:** Home KPIs reuse shared Query cache identities.
 
 ### Phase 5 — Settings defaults
 
