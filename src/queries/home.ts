@@ -19,11 +19,18 @@ export function homeRecentSessionsQueryOptions() {
 	} as const;
 }
 
-export function homeBucketsQueryOptions(fromTs: number, toTs: number) {
-	const params = { from_ts: fromTs, to_ts: toTs, bucket_s: 3600 };
+export function homeBuckets24hQueryOptions() {
 	return {
-		queryKey: queryKeys.history.buckets(params),
-		queryFn: () => getInferenceBuckets(params),
+		queryKey: queryKeys.history.buckets({ window: '24h', bucket_s: 3600 }),
+		queryFn: () => {
+			const toTs = Math.floor(Date.now() / 1000);
+			const fromTs = toTs - 86400;
+			return getInferenceBuckets({
+				from_ts: fromTs,
+				to_ts: toTs,
+				bucket_s: 3600,
+			});
+		},
 	} as const;
 }
 

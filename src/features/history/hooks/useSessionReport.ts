@@ -33,6 +33,8 @@ export type SessionReportData = {
 	refresh: () => Promise<void>;
 };
 
+const EMPTY_INFERENCES: HistoryInferenceEntry[] = [];
+
 export function useSessionReport(
 	sessionId: string | undefined,
 ): SessionReportData {
@@ -61,7 +63,7 @@ export function useSessionReport(
 	});
 
 	const session = sessionQuery.data ?? null;
-	const inferences = inferencesQuery.data?.entries ?? [];
+	const inferences = inferencesQuery.data?.entries ?? EMPTY_INFERENCES;
 
 	const duration = session
 		? formatDurationFromTimestamps(session.created_at, session.closed_at)

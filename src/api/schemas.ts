@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ApiError } from './errors';
-import { ClientErrorCode } from '@/lib/clientErrorCodes';
+import { ClientErrorCode, type ClientErrorCodeName } from '@/lib/clientErrorCodes';
 import { sessionDefaultsSchema } from '@/features/settings/sessionDefaultsSchema';
 
 export { sessionDefaultsSchema };
@@ -227,7 +227,7 @@ export const historyEventsResponseSchema = z.object({
 	entries: z.array(historyEventSchema),
 });
 
-const PARAM_LABEL_TO_CODE: Record<string, ClientErrorCode> = {
+const PARAM_LABEL_TO_CODE: Record<string, ClientErrorCodeName> = {
 	'history list params': ClientErrorCode.INVALID_HISTORY_LIST_PARAMS,
 	'inference query params': ClientErrorCode.INVALID_INFERENCE_QUERY_PARAMS,
 	'inference bucket params': ClientErrorCode.INVALID_INFERENCE_BUCKET_PARAMS,

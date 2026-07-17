@@ -12,9 +12,14 @@ export const ClientErrorCode = {
 	BACKEND_MODEL_NOT_READY: 'backend_model_not_ready',
 } as const;
 
-export type ClientErrorCode =
+export type ClientErrorCodeName =
 	(typeof ClientErrorCode)[keyof typeof ClientErrorCode];
 
-export function isClientErrorCode(value: string): value is ClientErrorCode {
+/** @deprecated Prefer ClientErrorCodeName — alias kept for call-site types. */
+export type ClientErrorCodeValue = ClientErrorCodeName;
+
+export function isClientErrorCode(
+	value: string,
+): value is ClientErrorCodeName {
 	return (Object.values(ClientErrorCode) as string[]).includes(value);
 }

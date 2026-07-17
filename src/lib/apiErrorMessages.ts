@@ -2,7 +2,7 @@ import type { ApiErrorCode } from '@/types/api';
 import {
 	ClientErrorCode,
 	isClientErrorCode,
-	type ClientErrorCode as ClientErrorCodeValue,
+	type ClientErrorCodeName,
 } from '@/lib/clientErrorCodes';
 
 /** REST `detail` codes from docs/api.md */
@@ -47,7 +47,7 @@ const HTTP_STATUS_MESSAGES: Record<number, string> = {
 };
 
 /** Typed client error codes → user-facing copy. */
-export const CLIENT_ERROR_MESSAGES: Record<ClientErrorCodeValue, string> = {
+export const CLIENT_ERROR_MESSAGES: Record<ClientErrorCodeName, string> = {
 	[ClientErrorCode.INVALID_REQUEST_BODY]:
 		'Session settings are invalid. Review Settings and try again.',
 	[ClientErrorCode.INVALID_SESSION_ID]: 'This session link is invalid.',

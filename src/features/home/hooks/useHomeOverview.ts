@@ -7,7 +7,7 @@ import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults
 import {
 	healthQueryOptions,
 	homeActiveSessionsQueryOptions,
-	homeBucketsQueryOptions,
+	homeBuckets24hQueryOptions,
 	homeRecentSessionsQueryOptions,
 } from '@/queries/home';
 
@@ -15,15 +15,11 @@ export function useHomeOverview() {
 	const { defaults } = useSessionDefaults();
 	const realThreshold = defaults.real_threshold;
 
-	const nowSec = Math.floor(Date.now() / 1000);
-	const fromTs = nowSec - 86400;
-	const toTs = nowSec;
-
 	const [healthQuery, activeQuery, bucketsQuery, recentQuery] = useQueries({
 		queries: [
 			{ ...healthQueryOptions },
 			{ ...homeActiveSessionsQueryOptions() },
-			{ ...homeBucketsQueryOptions(fromTs, toTs) },
+			{ ...homeBuckets24hQueryOptions() },
 			{ ...homeRecentSessionsQueryOptions() },
 		],
 	});

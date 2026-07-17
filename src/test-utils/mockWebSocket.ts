@@ -14,7 +14,7 @@ export class MockWebSocket {
 	onmessage: WsListener = null;
 	onerror: WsListener = null;
 	onclose: WsListener = null;
-	sent: Array<string | ArrayBuffer> = [];
+	sent: (string | ArrayBuffer)[] = [];
 
 	constructor(url: string) {
 		this.url = url;

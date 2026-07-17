@@ -17,7 +17,7 @@ export {
 export {
 	homeActiveSessionsQueryOptions,
 	homeRecentSessionsQueryOptions,
-	homeBucketsQueryOptions,
+	homeBuckets24hQueryOptions,
 } from './home';
 export {
 	sessionDefaultsQueryOptions,
