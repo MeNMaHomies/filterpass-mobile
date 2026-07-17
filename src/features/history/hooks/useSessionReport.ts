@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef } from 'react';
-import { getHistorySession, getSessionInferences, parseSessionId } from '@/api';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { parseSessionId } from '@/api';
 import type { ChunkTimelineItem, SessionLabel } from '@/types';
 import type { HistorySessionSummary, HistoryInferenceEntry } from '@/types/api';
 import {
@@ -7,26 +8,18 @@ import {
 	REST_ERROR_MESSAGES,
 } from '@/lib/apiErrorMessages';
 import { ClientErrorCode } from '@/lib/clientErrorCodes';
+import { formatApiError } from '@/lib/apiError';
 import {
 	formatDurationFromTimestamps,
 	formatSessionLabel,
 	formatTimestamp,
 } from '@/lib/formatSession';
 import { deriveSessionLabel } from '@/lib/sessionLabel';
-import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
-import { useAsyncResource } from '@/hooks/useAsyncResource';
-
-export type SessionReportPayload = {
-	session: HistorySessionSummary | null;
-	inferences: HistoryInferenceEntry[];
-	realThreshold: number;
-};
-
-const EMPTY_REPORT: SessionReportPayload = {
-	session: null,
-	inferences: [],
-	realThreshold: 0.4,
-};
+import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
+import {
+	historyInferencesQueryOptions,
+	historySessionQueryOptions,
+} from '@/queries/historySession';
 
 export type SessionReportData = {
 	session: HistorySessionSummary | null;
@@ -47,36 +40,28 @@ export function useSessionReport(
 		() => parseSessionId(sessionId),
 		[sessionId],
 	);
-	const realThresholdRef = useRef(0.4);
-
-	const load = useCallback(async (): Promise<SessionReportPayload> => {
-		const defaults = await ensureSessionDefaults();
-		realThresholdRef.current = defaults.real_threshold;
-
-		const [sess, inf] = await Promise.all([
-			getHistorySession(validatedSessionId!),
-			getSessionInferences(validatedSessionId!, { limit: 1000 }),
-		]);
-
-		return {
-			session: sess,
-			inferences: inf.entries,
-			realThreshold: defaults.real_threshold,
-		};
-	}, [validatedSessionId]);
+	const { defaults } = useSessionDefaults();
+	const realThreshold = defaults.real_threshold;
 
 	const enabled = Boolean(sessionId && validatedSessionId);
-	const {
-		data,
-		loading,
-		error,
-		refresh,
-		setData,
-	} = useAsyncResource(EMPTY_REPORT, load, { enabled });
 
-	const session = data.session;
-	const inferences = data.inferences;
-	const realThreshold = data.realThreshold;
+	const [sessionQuery, inferencesQuery] = useQueries({
+		queries: [
+			{
+				...historySessionQueryOptions(validatedSessionId ?? ''),
+				enabled,
+			},
+			{
+				...historyInferencesQueryOptions(validatedSessionId ?? '', {
+					limit: 1000,
+				}),
+				enabled,
+			},
+		],
+	});
+
+	const session = sessionQuery.data ?? null;
+	const inferences = inferencesQuery.data?.entries ?? [];
 
 	const duration = session
 		? formatDurationFromTimestamps(session.created_at, session.closed_at)
@@ -111,8 +96,16 @@ export function useSessionReport(
 		return null;
 	}, [sessionId, validatedSessionId]);
 
-	const resolvedError = validationError ?? error;
-	const resolvedLoading = enabled && !validationError && loading;
+	const queryError =
+		sessionQuery.error ?? inferencesQuery.error
+			? formatApiError(sessionQuery.error ?? inferencesQuery.error)
+			: null;
+
+	const resolvedError = validationError ?? queryError;
+	const resolvedLoading =
+		enabled &&
+		!validationError &&
+		(sessionQuery.isPending || inferencesQuery.isPending);
 
 	return {
 		session,
@@ -124,11 +117,8 @@ export function useSessionReport(
 		loading: resolvedLoading,
 		error: resolvedError,
 		refresh: async () => {
-			if (validationError) {
-				setData(EMPTY_REPORT);
-				return;
-			}
-			await refresh();
+			if (validationError) return;
+			await Promise.all([sessionQuery.refetch(), inferencesQuery.refetch()]);
 		},
 	};
 }

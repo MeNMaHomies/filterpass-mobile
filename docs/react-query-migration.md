@@ -144,20 +144,12 @@ Replace `useHistorySessions` offset state with `useInfiniteQuery` via
 
 **Exit:** History pagination via Query; pull-to-refresh works.
 
-### Phase 3 — Session report
+### Phase 3 — Session report ✅
 
-Split today's combined load:
+Split load into `historySessionQueryOptions` + `historyInferencesQueryOptions`;
+compose in `useSessionReport` via `useQueries`.
 
-| Query | Key | Fn |
-| ----- | --- | -- |
-| Session summary | `queryKeys.history.session(id)` | `getHistorySession` |
-| Inferences | `queryKeys.history.inferences(id, { limit: 1000 })` | `getSessionInferences` |
-
-Compose in `useSessionReport` with `useQueries` or two `useQuery`s. Derive timeline/label in render (pure), still using settings `real_threshold`.
-
-Prefetch opportunity: History row press → `queryClient.prefetchQuery(session)`.
-
-**Exit:** Report shares session entity cache with any future consumers; validation `enabled: !!parseSessionId(id)`.
+**Exit:** Report shares session entity cache keys with future consumers.
 
 ### Phase 4 — Home overview
 

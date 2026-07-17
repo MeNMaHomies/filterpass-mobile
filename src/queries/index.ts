@@ -10,3 +10,7 @@ export {
 	fetchHistorySessionsPage,
 	historySessionsInfiniteOptions,
 } from './history';
+export {
+	historySessionQueryOptions,
+	historyInferencesQueryOptions,
+} from './historySession';
