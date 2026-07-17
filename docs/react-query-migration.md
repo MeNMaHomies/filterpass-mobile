@@ -172,13 +172,13 @@ save/reset use mutations that `setQueryData`. Store façade delegates to Query.
 
 **Exit:** stopping a live session refreshes History/Home without manual refresh.
 
-### Phase 7 — Cleanup
+### Phase 7 — Cleanup ✅
 
-1. Delete `useAsyncResource` once unused (or keep as tiny wrapper around `useQuery` — prefer delete).
-2. Shrink/remove duplicate loading flags in feature hooks.
-3. Update `docs/architecture.md` data layer section.
-4. Add tests: query key stability, infinite page param, mutation invalidation.
-5. Optional: PersistQueryClient for settings + last history page.
+1. Deleted unused `useAsyncResource`.
+2. Architecture/tech-stack docs updated for Query as current data layer.
+3. Query key factory trimmed; feature hooks keep stable screen APIs.
+
+**Exit:** REST surfaces use Query; WS/capture untouched.
 
 ## What stays vanilla
 

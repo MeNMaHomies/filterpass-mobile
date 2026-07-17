@@ -35,20 +35,22 @@ modules/*                 local Expo native modules (Android Kotlin)
 
 Rules of thumb:
 
-- Screens do **not** call `fetch` / open sockets directly; feature hooks use `@/api`.
+- Screens do **not** call `fetch` / open sockets directly; feature hooks use `@/api` / `@/queries`.
 - Prefer existing `AppShell`, `Card`, `Button`, charts over one-off chrome.
 - Wire types and Zod schemas stay aligned with `docs/api.md`.
-- **Server state (REST):** migrating to TanStack Query — see [`react-query-migration.md`](./react-query-migration.md). Until then, prefer shared fetchers in `@/api` over per-screen `useState` loaders.
+- **Server state (REST):** TanStack Query (`src/queries/`) — see [`react-query-migration.md`](./react-query-migration.md). Live WS/PCM stay imperative.
 
-## Data fetching (current → target)
+## Data fetching
 
-| Concern | Current | Target |
-| ------- | ------- | ------ |
-| One-shot REST | `useAsyncResource` | `useQuery` |
-| History pages | `useHistorySessions` offset state | `useInfiniteQuery` |
-| `/health` | `BackendHealthProvider` | Query (+ thin façade optional) |
-| Live WS / PCM | `useLiveSession` | stays imperative |
-| Session defaults | `sessionDefaultsStore` | store or Query over AsyncStorage |
+| Concern | Implementation |
+| ------- | -------------- |
+| REST cache | `@tanstack/react-query` via `src/queries/*` |
+| History pages | `useInfiniteQuery` (`historySessionsInfiniteOptions`) |
+| `/health` | `useQuery` + `BackendHealthProvider` façade |
+| Session report | `useQueries` (session + inferences) |
+| Home overview | `useQueries` (shared health/history/bucket keys) |
+| Session defaults | `useQuery` + mutations over AsyncStorage |
+| Live WS / PCM | `useLiveSession` (imperative) |
 
 
 ## Feature map

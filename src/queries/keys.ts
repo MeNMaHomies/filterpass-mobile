@@ -22,7 +22,4 @@ export const queryKeys = {
 	settings: {
 		defaults: ['settings', 'defaults'] as const,
 	},
-	home: {
-		overview: ['home', 'overview'] as const,
-	},
 } as const;
