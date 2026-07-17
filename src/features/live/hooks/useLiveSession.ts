@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
 	requestRecordingPermissionsAsync,
 	setAudioModeAsync,
@@ -26,8 +27,11 @@ import {
 import { hapticError, hapticLight, hapticMedium, hapticWarning } from '@/lib/haptics';
 import { throttle } from '@/lib/throttle';
 import type { SessionLabel } from '@/types';
+import { useCallCapture } from './useCallCapture';
 
 export type LivePhase = 'idle' | 'connecting' | 'warmup' | 'active';
+
+export type CaptureMode = 'mic' | 'call';
 
 export type ConnectionStatus =
 	| 'Disconnected'
@@ -37,6 +41,8 @@ export type ConnectionStatus =
 
 export type LiveSessionState = {
 	phase: LivePhase;
+	captureMode: CaptureMode;
+	setCaptureMode: (mode: CaptureMode) => void;
 	sessionId: string | null;
 	sessionScore: number;
 	chunkIdx: number;
@@ -52,6 +58,7 @@ export type LiveSessionState = {
 	connectionStatus: ConnectionStatus;
 	defaults: SessionDefaults | null;
 	error: string | null;
+	callCapture: ReturnType<typeof useCallCapture>;
 	start: () => Promise<void>;
 	stop: () => Promise<void>;
 	clearError: () => void;
@@ -63,6 +70,7 @@ const CHART_FLUSH_MS = 250;
 export function useLiveSession(): LiveSessionState {
 	const { ensureReady } = useBackendHealth();
 	const [phase, setPhase] = useState<LivePhase>('idle');
+	const [captureMode, setCaptureModeState] = useState<CaptureMode>('mic');
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [sessionScore, setSessionScore] = useState(0);
 	const [chunkIdx, setChunkIdx] = useState(0);
@@ -88,6 +96,9 @@ export function useLiveSession(): LiveSessionState {
 	const chunkHistoryRef = useRef<number[]>([]);
 	const framesSeenRef = useRef(0);
 	const flushDerivedMetricsRef = useRef<() => void>(() => {});
+	const captureModeRef = useRef<CaptureMode>(captureMode);
+	captureModeRef.current = captureMode;
+	const activeCaptureRef = useRef<CaptureMode | null>(null);
 
 	useEffect(() => {
 		flushDerivedMetricsRef.current = throttle(() => {
@@ -100,12 +111,18 @@ export function useLiveSession(): LiveSessionState {
 		flushDerivedMetricsRef.current();
 	}, []);
 
+	const sendPcm = useCallback((data: ArrayBuffer) => {
+		framesRef.current?.sendPcm(data);
+	}, []);
+
+	const callCapture = useCallCapture({ onPcm: sendPcm });
+
 	const { stream: audioStream } = useAudioStream({
 		encoding: 'int16',
 		sampleRate: defaults?.sample_rate ?? 16000,
 		channels: 1,
 		onBuffer: (buffer) => {
-			framesRef.current?.sendPcm(buffer.data);
+			sendPcm(buffer.data);
 		},
 	});
 
@@ -113,13 +130,35 @@ export function useLiveSession(): LiveSessionState {
 		loadSessionDefaults().then(setDefaults);
 	}, []);
 
+	const setCaptureMode = useCallback(
+		(mode: CaptureMode) => {
+			if (phase !== 'idle') return;
+			if (mode === 'call' && Platform.OS !== 'android') {
+				setError('Call Scan is only available on Android showcase builds.');
+				return;
+			}
+			setCaptureModeState(mode);
+			setError(null);
+			if (mode === 'call') {
+				callCapture.refreshAccessibility();
+			}
+		},
+		[phase, callCapture],
+	);
+
 	const teardown = useCallback(async () => {
 		stoppingRef.current = true;
+		const mode = activeCaptureRef.current ?? captureModeRef.current;
 		try {
-			audioStream.stop();
+			if (mode === 'call') {
+				await callCapture.stop();
+			} else {
+				audioStream.stop();
+			}
 		} catch {
 			// stream may not be running
 		}
+		activeCaptureRef.current = null;
 		framesRef.current?.close();
 		outputRef.current?.close();
 		framesRef.current = null;
@@ -150,7 +189,7 @@ export function useLiveSession(): LiveSessionState {
 		setLastLatencyMs(null);
 		hasScoredRef.current = false;
 		stoppingRef.current = false;
-	}, [audioStream]);
+	}, [audioStream, callCapture]);
 
 	useEffect(() => {
 		return () => {
@@ -180,11 +219,20 @@ export function useLiveSession(): LiveSessionState {
 		setPhase('connecting');
 		hasScoredRef.current = false;
 
+		const mode = captureModeRef.current;
+
 		try {
 			await ensureReady();
 
 			const sessionDefaults = await loadSessionDefaults();
 			setDefaults(sessionDefaults);
+
+			if (mode === 'call') {
+				if (Platform.OS !== 'android') {
+					throw new Error('Call Scan is only available on Android showcase builds.');
+				}
+				callCapture.refreshAccessibility();
+			}
 
 			const { granted } = await requestRecordingPermissionsAsync();
 			if (!granted) {
@@ -289,14 +337,27 @@ export function useLiveSession(): LiveSessionState {
 				});
 			});
 
-			await audioStream.start();
+			activeCaptureRef.current = mode;
+			if (mode === 'call') {
+				await callCapture.start(sessionDefaults.sample_rate);
+			} else {
+				await audioStream.start();
+			}
 		} catch (e) {
 			void hapticError();
 			setPhase('idle');
 			setError(formatApiError(e));
 			await teardown();
 		}
-	}, [phase, audioStream, teardown, handleWsClose, flushDerivedMetrics, ensureReady]);
+	}, [
+		phase,
+		audioStream,
+		callCapture,
+		teardown,
+		handleWsClose,
+		flushDerivedMetrics,
+		ensureReady,
+	]);
 
 	const stop = useCallback(async () => {
 		void hapticMedium();
@@ -315,6 +376,8 @@ export function useLiveSession(): LiveSessionState {
 
 	return {
 		phase,
+		captureMode,
+		setCaptureMode,
 		sessionId,
 		sessionScore,
 		chunkIdx,
@@ -330,6 +393,7 @@ export function useLiveSession(): LiveSessionState {
 		connectionStatus,
 		defaults,
 		error,
+		callCapture,
 		start,
 		stop,
 		clearError: () => setError(null),
