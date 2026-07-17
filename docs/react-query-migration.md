@@ -126,19 +126,16 @@ Place provider **outside** feature screens, **inside** `GestureHandlerRootView` 
 
 **Exit:** app boots; no hooks migrated yet.
 
-### Phase 1 — Health (replace Context cache)
+### Phase 1 — Health (replace Context cache) ✅
 
 | Move | From | To |
 | ---- | ---- | -- |
 | `/health` poll | `BackendHealthProvider` | `useQuery({ queryKey: queryKeys.health, queryFn: getHealth })` |
 | `ensureReady` | Context method | `queryClient.fetchQuery` + `assertBackendHealthy` |
 
-Options:
+**A (done):** Keep `BackendHealthProvider` as a thin façade over Query so screens don't churn.
 
-- **A (preferred):** Keep `BackendHealthProvider` as a thin façade over Query so screens don't churn.
-- **B:** Delete Context; hooks call `useHealthQuery` / `useEnsureBackendReady` directly.
-
-**Exit:** single `/health` cache; Live start uses `fetchQuery`; offline still clears error to OfflineBanner.
+**Exit:** single `/health` cache; Live start uses `fetchQuery`; offline still clears error to offlineBanner.
 
 ### Phase 2 — History list (infinite query)
 
