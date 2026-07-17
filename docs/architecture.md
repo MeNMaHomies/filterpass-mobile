@@ -53,6 +53,16 @@ Rules of thumb:
 
 Central hook: `useLiveSession` (`src/features/live/hooks/useLiveSession.ts`).
 
+Internals (keep screens on the facade):
+
+| Piece | Path | Role |
+| ----- | ---- | ---- |
+| Types | `features/live/types.ts` | Phase, capture mode, Call Scan setup |
+| Reducer | `features/live/domain/liveSessionReducer.ts` | Pure output/frames → metrics/phase |
+| Dual WS | `features/live/session/connectLiveSession.ts` | Open frames+output atomically |
+| Mic | `features/live/capture/useMicCapture.ts` | expo-audio adapter |
+| Call | `features/live/hooks/useCallCapture.ts` | Native module + Accessibility |
+
 ```
 idle
   → start()
@@ -60,7 +70,7 @@ connecting
   → ensureReady (/health)
   → mic permission + audio mode
   → POST /sessions
-  → connect /ws/output + /ws/frames (both must open)
+  → connectLiveSession (/ws/output + /ws/frames)
   → start capture (mic OR call)
 warmup (first output "warmup")
 active (first output "score")
@@ -132,10 +142,11 @@ Scripts:
 
 ## Testing layout
 
-| Layer               | Where                                                      |
-| ------------------- | ---------------------------------------------------------- |
-| JS unit / component | `src/**/__tests__`, Jest + jest-expo                       |
-| Native PCM helpers  | `modules/filterpass-call-capture/android/src/test` (JUnit) |
+| Layer               | Where                                                                 |
+| ------------------- | --------------------------------------------------------------------- |
+| JS unit / component | `src/**/__tests__`, Jest + jest-expo                                  |
+| Live domain / WS    | `features/live/domain`, `features/live/session`, `src/api/ws/__tests__` |
+| Native PCM helpers  | `modules/filterpass-call-capture/android/src/test` (JUnit)            |
 
 ## Extension points
 

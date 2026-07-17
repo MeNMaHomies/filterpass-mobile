@@ -47,7 +47,7 @@ export default function LiveRoute() {
 					busy={live.phase === 'connecting'}
 					captureMode={live.captureMode}
 					onCaptureModeChange={live.setCaptureMode}
-					callCapture={live.callCapture}
+					callScan={live.callScan}
 				/>
 			);
 		}

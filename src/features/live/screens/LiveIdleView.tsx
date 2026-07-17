@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { AppState, ScrollView, View, Text, StyleSheet } from 'react-native';
 import { Phone } from 'lucide-react-native';
 import { Button, Card, ErrorBanner, Eyebrow, StatusBadge } from '@/components';
@@ -7,10 +7,10 @@ import { CaptureModeToggle } from '../components/CaptureModeToggle';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
 import type { SessionDefaults } from '@/features/settings/sessionDefaults';
 import type {
+	CallScanSetup,
 	CaptureMode,
 	ConnectionStatus,
-} from '../hooks/useLiveSession';
-import type { CallCaptureController } from '../hooks/useCallCapture';
+} from '../types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
 
@@ -23,7 +23,7 @@ type LiveIdleViewProps = {
 	busy?: boolean;
 	captureMode: CaptureMode;
 	onCaptureModeChange: (mode: CaptureMode) => void;
-	callCapture: CallCaptureController;
+	callScan: CallScanSetup;
 };
 
 export function LiveIdleView({
@@ -35,28 +35,29 @@ export function LiveIdleView({
 	busy = false,
 	captureMode,
 	onCaptureModeChange,
-	callCapture,
+	callScan,
 }: LiveIdleViewProps) {
 	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
+	const {
+		available: callCaptureAvailable,
+		accessibility,
+		refreshAccessibility,
+		openAccessibilitySettings,
+	} = callScan;
 	const badgeVariant =
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 	const isCall = captureMode === 'call';
-	const a11yReady =
-		callCapture.accessibility.enabled && callCapture.accessibility.connected;
-	const canStart = !busy && (!isCall || (callCapture.available && a11yReady));
-
-	const refreshA11y = useCallback(() => {
-		callCapture.refreshAccessibility();
-	}, [callCapture]);
+	const a11yReady = accessibility.enabled && accessibility.connected;
+	const canStart = !busy && (!isCall || (callCaptureAvailable && a11yReady));
 
 	useEffect(() => {
-		if (!isCall || !callCapture.available) return;
-		refreshA11y();
+		if (!isCall || !callCaptureAvailable) return;
+		refreshAccessibility();
 		const sub = AppState.addEventListener('change', (state) => {
-			if (state === 'active') refreshA11y();
+			if (state === 'active') refreshAccessibility();
 		});
 		return () => sub.remove();
-	}, [isCall, callCapture.available, refreshA11y]);
+	}, [isCall, callCaptureAvailable, refreshAccessibility]);
 
 	const hint = busy
 		? 'Connecting…'
@@ -106,35 +107,35 @@ export function LiveIdleView({
 								a11yReady ? styles.callStatusOk : styles.callStatusWait,
 							]}
 						>
-							{!callCapture.available
+							{!callCaptureAvailable
 								? 'Android only'
 								: a11yReady
 									? 'Ready'
-									: callCapture.accessibility.enabled
+									: accessibility.enabled
 										? 'Enabled, reconnecting…'
 										: 'Off'}
 						</Text>
 					</View>
-					{callCapture.available && !a11yReady ? (
+					{callCaptureAvailable && !a11yReady ? (
 						<Button
 							variant="solid"
 							label="Open Accessibility settings"
 							style={styles.callButton}
 							onPress={() => {
 								try {
-									callCapture.openAccessibilitySettings();
+									openAccessibilitySettings();
 								} catch {
 									onClearError?.();
 								}
 							}}
 						/>
 					) : null}
-					{callCapture.available ? (
+					{callCaptureAvailable ? (
 						<Button
 							variant="ghost"
 							label="Refresh status"
 							style={styles.callButton}
-							onPress={refreshA11y}
+							onPress={refreshAccessibility}
 						/>
 					) : null}
 				</Card>
