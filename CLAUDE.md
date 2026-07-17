@@ -2,14 +2,34 @@
 
 # FilterPass Mobile — Agent Guidelines
 
+## Docs (read these first)
+
+| Doc                                            | When                                               |
+| ---------------------------------------------- | -------------------------------------------------- |
+| [`docs/tech-stack.md`](docs/tech-stack.md)     | Versions, libraries, tooling                       |
+| [`docs/architecture.md`](docs/architecture.md) | App layout, live flow, native seams                |
+| [`docs/api.md`](docs/api.md)                   | REST + WebSocket wire contract (**authoritative**) |
+| [`docs/call-capture.md`](docs/call-capture.md) | Android Call Scan / dual capture                   |
+| [`docs/README.md`](docs/README.md)             | Docs index                                         |
+
+Do not guess API fields, PCM formats, or Call Scan behavior — read the matching doc.
+
 ## Expo & React Native
 
 - Target **Expo SDK 57** (`expo ~57.0.6`). Read versioned docs before writing code: https://docs.expo.dev/versions/v57.0.0/
-- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/` (`ui/`, `layout/`, `charts/`). Feature code in `src/features/<name>/` (`screens/`, `components/`). Domain types in `src/types/`.
+- App routes live in `src/app/` (Expo Router). Shared UI in `src/components/` (`ui/`, `layout/`, `charts/`). Feature code in `src/features/<name>/` (`screens/`, `components/`, `hooks/`). Domain types in `src/types/`.
 - Theme tokens: `src/theme/tokens.ts`, typography: `src/theme/typography.ts`.
 - Prefer existing components (`AppShell`, `Card`, `Button`, etc.) over one-off markup.
-- Avoid native modules that crash in **Expo Go** unless verified (e.g. `@shopify/react-native-skia` with layer blur caused SIGSEGV — use `expo-linear-gradient` or a dev build instead).
+- Avoid native modules that crash in **Expo Go** unless verified (e.g. `@shopify/react-native-skia` with layer blur caused SIGSEGV — use `expo-linear-gradient` or a **dev build** instead).
 - `babel.config.js` must include `react-native-reanimated/plugin` (last in plugins list).
+- Full stack inventory: [`docs/tech-stack.md`](docs/tech-stack.md).
+
+## Live audio & Call Scan
+
+- **Mic mode:** `expo-audio` via `useLiveSession` → binary PCM on `/ws/frames`.
+- **Call Scan (Android showcase):** local module `modules/filterpass-call-capture` — Accessibility gate, dual `AudioRecord`, mix to 16 kHz / 100 ms frames, `onPcm` → same WS path. Requires **expo-dev-client** / sideload APK, not Expo Go.
+- JS bridge: `useCallCapture`; mode switch: `captureMode: 'mic' | 'call'`.
+- Details: [`docs/call-capture.md`](docs/call-capture.md), flow: [`docs/architecture.md`](docs/architecture.md).
 
 ## Backend API
 
@@ -26,6 +46,13 @@ Use it for all REST and WebSocket contracts (sessions, `/ws/frames`, `/ws/output
 
 **Env:** copy `.env.example` to `.env`. Android emulator may need `http://10.0.2.2:8000`; physical devices need your machine's LAN IP.
 
+## Local native modules
+
+- Live under `modules/`; autolinked via `package.json` → `expo.autolinking.nativeModulesDir`.
+- Android config changes go through an **idempotent** Expo config plugin (see `filterpass-call-capture/app.plugin.js`).
+- After native/plugin changes: `npm run android:prebuild`, then `android:run` or `android:apk`.
+- Windows + Reanimated: ensure Ninja **≥ 1.12** (see call-capture doc).
+
 ## Git commits
 
 **Always commit code changes** so work is tracked incrementally.
@@ -41,4 +68,5 @@ Example split: UI shell in one commit, API client in another, crash fix in anoth
 
 - Minimize diff scope; match surrounding naming and patterns.
 - Comments only for non-obvious logic.
-- Run `npx expo start` / relevant checks after meaningful changes when possible.
+- Run `npm run typecheck`, `npm run lint`, `npm test`, and native checks after meaningful changes when possible.
+- Prefer `docs/*` updates when behavior or stack changes.

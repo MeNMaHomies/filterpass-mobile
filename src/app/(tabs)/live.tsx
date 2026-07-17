@@ -16,7 +16,9 @@ export default function LiveRoute() {
 	const subtitle =
 		live.sessionId && live.phase !== 'idle'
 			? `sess_${shortSessionId(live.sessionId)}`
-			: undefined;
+			: live.captureMode === 'call'
+				? 'Call Scan'
+				: undefined;
 
 	const phaseKey =
 		live.phase === 'connecting'
@@ -43,6 +45,9 @@ export default function LiveRoute() {
 					error={live.error}
 					onClearError={live.clearError}
 					busy={live.phase === 'connecting'}
+					captureMode={live.captureMode}
+					onCaptureModeChange={live.setCaptureMode}
+					callCapture={live.callCapture}
 				/>
 			);
 		}
@@ -73,13 +78,18 @@ export default function LiveRoute() {
 		);
 	}, [live, requestStop]);
 
+	const stopDescription =
+		live.captureMode === 'call'
+			? 'Stops Call Scan capture and closes the detector session on the server.'
+			: 'Stops mic capture and closes the detector session on the server.';
+
 	return (
 		<AppShell title="Live Monitor" subtitle={subtitle}>
 			<MotiPhase phaseKey={phaseKey}>{phaseView}</MotiPhase>
 			<ConfirmSheet
 				ref={stopSheetRef}
 				title="End live session?"
-				description="Stops mic capture and closes the detector session on the server."
+				description={stopDescription}
 				confirmLabel="End session"
 				cancelLabel="Keep going"
 				destructive
