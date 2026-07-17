@@ -4,11 +4,15 @@ import {
 	requestRecordingPermissionsAsync,
 	setAudioModeAsync,
 } from 'expo-audio';
-import { createSession, deleteSession } from '@/api';
 import { type FramesSocket, type OutputSocket, WsCloseError } from '@/api/ws';
 import { useBackendHealth } from '@/features/health';
 import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
 import { useSessionDefaults } from '@/features/settings/hooks/useSessionDefaults';
+import {
+	createLiveSessionMutation,
+	deleteLiveSessionMutation,
+	invalidateAfterLiveSessionChange,
+} from '@/queries/sessions';
 import {
 	formatApiError,
 	formatWsFramesError,
@@ -152,9 +156,10 @@ export function useLiveSession(): LiveSessionState {
 		sessionIdRef.current = null;
 		if (id) {
 			try {
-				await deleteSession(id);
+				await deleteLiveSessionMutation(id);
 			} catch {
-				// session may already be gone
+				// session may already be gone — still refresh lists
+				await invalidateAfterLiveSessionChange().catch(() => {});
 			}
 		}
 
@@ -179,7 +184,9 @@ export function useLiveSession(): LiveSessionState {
 			const id = sessionIdRef.current;
 			sessionIdRef.current = null;
 			if (id) {
-				deleteSession(id).catch(() => {});
+				deleteLiveSessionMutation(id).catch(() => {
+					void invalidateAfterLiveSessionChange();
+				});
 			}
 		};
 	}, []);
@@ -234,7 +241,7 @@ export function useLiveSession(): LiveSessionState {
 				playsInSilentMode: true,
 			});
 
-			const created = await createSession({
+			const created = await createLiveSessionMutation({
 				sample_rate: sessionDefaults.sample_rate,
 				chunk_duration_s: sessionDefaults.chunk_duration_s,
 				ema_alpha: sessionDefaults.ema_alpha,

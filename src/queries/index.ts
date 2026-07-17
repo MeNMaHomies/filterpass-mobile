@@ -25,3 +25,8 @@ export {
 	persistSessionDefaultsQuery,
 	resetSessionDefaultsQuery,
 } from './settings';
+export {
+	createLiveSessionMutation,
+	deleteLiveSessionMutation,
+	invalidateAfterLiveSessionChange,
+} from './sessions';

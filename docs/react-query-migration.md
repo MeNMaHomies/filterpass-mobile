@@ -165,16 +165,12 @@ save/reset use mutations that `setQueryData`. Store façade delegates to Query.
 
 **Exit:** one write path; Live/Settings/Home see updates through Query cache.
 
-### Phase 6 — Live REST mutations
+### Phase 6 — Live REST mutations ✅
 
-| Action | Mutation | On success |
-| ------ | -------- | ---------- |
-| `createSession` | `useMutation` | optional; session id still local to Live |
-| `deleteSession` (teardown / unmount) | `useMutation` or `queryClient` call | `invalidateQueries(queryKeys.history.all)` + home overview keys |
+`createLiveSessionMutation` / `deleteLiveSessionMutation` invalidate
+`queryKeys.history.all` (+ health) after teardown/unmount. WS stays imperative.
 
-Do **not** put WS connect in `mutationFn`. Keep `connectLiveSession` imperative.
-
-**Exit:** stopping a live session refreshes History/Home without manual refresh taps.
+**Exit:** stopping a live session refreshes History/Home without manual refresh.
 
 ### Phase 7 — Cleanup
 
