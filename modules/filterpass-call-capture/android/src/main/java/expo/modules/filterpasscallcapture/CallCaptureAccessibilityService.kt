@@ -5,8 +5,8 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * Scaffold AccessibilityService for Call Scan.
- * Phase 3 wires AudioRecord workers into this service.
+ * Accessibility service required for showcase call-path capture on Android OEMs.
+ * Dual AudioRecord workers run from the Expo module once this service is connected.
  */
 class CallCaptureAccessibilityService : AccessibilityService() {
 	override fun onServiceConnected() {
@@ -31,7 +31,7 @@ class CallCaptureAccessibilityService : AccessibilityService() {
 	}
 
 	override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-		// Phase 3 may observe call UI transitions. Scaffold ignores events.
+		// Showcase build does not drive capture from UI events.
 	}
 
 	override fun onInterrupt() {
