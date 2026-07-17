@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { hapticError, hapticSuccess } from '@/lib/haptics';
 import { clampSessionThresholds } from '@/lib/sessionThresholds';
 import {
@@ -6,9 +7,10 @@ import {
 	type SessionDefaults,
 } from '../sessionDefaults';
 import {
-	persistSessionDefaults,
-	resetStoredSessionDefaults,
-} from '../sessionDefaultsStore';
+	persistSessionDefaultsQuery,
+	resetSessionDefaultsQuery,
+} from '@/queries/settings';
+import { queryKeys } from '@/queries/keys';
 import { useSessionDefaults } from './useSessionDefaults';
 
 function formatThreshold(value: number): string {
@@ -56,6 +58,7 @@ export type SettingsFormState = {
 };
 
 export function useSettingsForm(): SettingsFormState {
+	const queryClient = useQueryClient();
 	const { defaults: storedDefaults, loaded } = useSessionDefaults();
 	const [defaults, setDefaults] = useState<SessionDefaults>(API_SESSION_DEFAULTS);
 	const [realText, setRealText] = useState(
@@ -73,6 +76,20 @@ export function useSettingsForm(): SettingsFormState {
 		setRealText(formatThreshold(storedDefaults.real_threshold));
 		setSpoofText(formatThreshold(storedDefaults.spoof_threshold));
 	}, [loaded, storedDefaults]);
+
+	const saveMutation = useMutation({
+		mutationFn: (next: SessionDefaults) => persistSessionDefaultsQuery(next),
+		onSuccess: (next) => {
+			queryClient.setQueryData(queryKeys.settings.defaults, next);
+		},
+	});
+
+	const resetMutation = useMutation({
+		mutationFn: async () => resetSessionDefaultsQuery(),
+		onSuccess: (next) => {
+			queryClient.setQueryData(queryKeys.settings.defaults, next);
+		},
+	});
 
 	const applyThresholds = useCallback(
 		(patch: Partial<Pick<SessionDefaults, 'real_threshold' | 'spoof_threshold'>>) => {
@@ -107,7 +124,7 @@ export function useSettingsForm(): SettingsFormState {
 	const handleSave = useCallback(async () => {
 		setPersistenceError(null);
 		try {
-			await persistSessionDefaults(defaults);
+			await saveMutation.mutateAsync(defaults);
 			void hapticSuccess();
 			setSaved(true);
 			setTimeout(() => setSaved(false), 2000);
@@ -118,12 +135,12 @@ export function useSettingsForm(): SettingsFormState {
 				'Could not save settings. Restart the app and try again.',
 			);
 		}
-	}, [defaults]);
+	}, [defaults, saveMutation]);
 
 	const handleReset = useCallback(async () => {
 		setPersistenceError(null);
 		try {
-			const d = await resetStoredSessionDefaults();
+			const d = await resetMutation.mutateAsync();
 			setDefaults(d);
 			setRealText(formatThreshold(d.real_threshold));
 			setSpoofText(formatThreshold(d.spoof_threshold));
@@ -133,7 +150,7 @@ export function useSettingsForm(): SettingsFormState {
 				'Could not reset settings. Restart the app and try again.',
 			);
 		}
-	}, []);
+	}, [resetMutation]);
 
 	return {
 		defaults,

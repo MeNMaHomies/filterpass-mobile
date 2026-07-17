@@ -158,16 +158,12 @@ Parallel `useQueries` sharing `health` + history session/bucket keys via
 
 **Exit:** Home KPIs reuse shared Query cache identities.
 
-### Phase 5 — Settings defaults
+### Phase 5 — Settings defaults ✅
 
-Two valid paths:
+Session defaults loaded via `useQuery` (`sessionDefaultsQueryOptions`);
+save/reset use mutations that `setQueryData`. Store façade delegates to Query.
 
-1. **Keep** `sessionDefaultsStore` as client persistence (not server). Expose via `useSessionDefaults` as today.
-2. **Or** `useQuery({ queryKey: queryKeys.settings.defaults, queryFn: loadSessionDefaults })` + `useMutation` for save/reset that `setQueryData` / invalidate.
-
-Prefer (2) only if multiple screens need suspense/isLoading parity; otherwise leave store and teach Query consumers to call `ensureSessionDefaults` inside `queryFn` where labels need `real_threshold`.
-
-**Exit:** one write path for defaults; Live/Settings/Home see updates without custom pub/sub if using Query.
+**Exit:** one write path; Live/Settings/Home see updates through Query cache.
 
 ### Phase 6 — Live REST mutations
 

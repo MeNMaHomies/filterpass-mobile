@@ -19,3 +19,9 @@ export {
 	homeRecentSessionsQueryOptions,
 	homeBucketsQueryOptions,
 } from './home';
+export {
+	sessionDefaultsQueryOptions,
+	ensureSessionDefaultsQuery,
+	persistSessionDefaultsQuery,
+	resetSessionDefaultsQuery,
+} from './settings';

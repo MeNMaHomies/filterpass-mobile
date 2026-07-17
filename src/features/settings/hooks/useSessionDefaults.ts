@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
 	API_SESSION_DEFAULTS,
 	type SessionDefaults,
 } from '../sessionDefaults';
 import {
-	ensureSessionDefaults,
-	refreshSessionDefaults,
-	subscribeSessionDefaults,
-} from '../sessionDefaultsStore';
+	ensureSessionDefaultsQuery,
+	sessionDefaultsQueryOptions,
+} from '@/queries/settings';
+import { queryClient } from '@/queries/client';
 
 type SessionDefaultsState = {
 	defaults: SessionDefaults;
@@ -16,38 +16,22 @@ type SessionDefaultsState = {
 };
 
 export function useSessionDefaults(): SessionDefaultsState {
-	const [defaults, setDefaults] = useState<SessionDefaults>(API_SESSION_DEFAULTS);
-	const [loaded, setLoaded] = useState(false);
+	const query = useQuery(sessionDefaultsQueryOptions);
 
-	useEffect(() => {
-		let active = true;
-
-		void ensureSessionDefaults().then((d) => {
-			if (!active) return;
-			setDefaults(d);
-			setLoaded(true);
+	const refresh = async () => {
+		const result = await queryClient.fetchQuery({
+			...sessionDefaultsQueryOptions,
+			staleTime: 0,
 		});
+		return result;
+	};
 
-		const unsubscribe = subscribeSessionDefaults(() => {
-			void ensureSessionDefaults().then((d) => {
-				if (!active) return;
-				setDefaults(d);
-				setLoaded(true);
-			});
-		});
-
-		return () => {
-			active = false;
-			unsubscribe();
-		};
-	}, []);
-
-	const refresh = useCallback(async () => {
-		const d = await refreshSessionDefaults();
-		setDefaults(d);
-		setLoaded(true);
-		return d;
-	}, []);
-
-	return { defaults, loaded, refresh };
+	return {
+		defaults: query.data ?? API_SESSION_DEFAULTS,
+		loaded: query.isSuccess || query.isError,
+		refresh,
+	};
 }
+
+/** Imperative ensure used by Live start (Query-backed). */
+export { ensureSessionDefaultsQuery as ensureSessionDefaults };

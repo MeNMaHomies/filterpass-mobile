@@ -5,76 +5,48 @@ import {
 	saveSessionDefaults,
 	type SessionDefaults,
 } from './sessionDefaults';
-
-type Listener = () => void;
-
-let cached: SessionDefaults | null = null;
-let loadPromise: Promise<SessionDefaults> | null = null;
-const listeners = new Set<Listener>();
-
-function notify() {
-	for (const listener of listeners) {
-		listener();
-	}
-}
-
-function setCache(defaults: SessionDefaults) {
-	cached = defaults;
-	notify();
-}
-
-/** Subscribe to in-memory default changes (save, reset, refresh). */
-export function subscribeSessionDefaults(listener: Listener): () => void {
-	listeners.add(listener);
-	return () => listeners.delete(listener);
-}
-
-/** Cached value when already loaded; otherwise API defaults. */
-export function getSessionDefaultsSnapshot(): SessionDefaults {
-	return cached ?? API_SESSION_DEFAULTS;
-}
+import {
+	ensureSessionDefaultsQuery,
+	persistSessionDefaultsQuery,
+	resetSessionDefaultsQuery,
+} from '@/queries/settings';
 
 /**
- * Load defaults once and share the result across callers.
- * Concurrent calls share the same in-flight promise.
+ * Compatibility façade over TanStack Query settings cache.
+ * Prefer `ensureSessionDefaultsQuery` / mutations from `@/queries/settings`.
  */
 export async function ensureSessionDefaults(): Promise<SessionDefaults> {
-	if (cached) return cached;
-	if (!loadPromise) {
-		loadPromise = loadSessionDefaults()
-			.then((defaults) => {
-				cached = defaults;
-				return defaults;
-			})
-			.finally(() => {
-				loadPromise = null;
-			});
-	}
-	return loadPromise;
+	return ensureSessionDefaultsQuery();
 }
 
-/** Force reload from AsyncStorage and update subscribers. */
 export async function refreshSessionDefaults(): Promise<SessionDefaults> {
-	const defaults = await loadSessionDefaults();
-	setCache(defaults);
-	return defaults;
+	return ensureSessionDefaultsQuery();
 }
 
 export async function persistSessionDefaults(
 	defaults: SessionDefaults,
 ): Promise<void> {
-	await saveSessionDefaults(defaults);
-	setCache(defaults);
+	await persistSessionDefaultsQuery(defaults);
 }
 
 export async function resetStoredSessionDefaults(): Promise<SessionDefaults> {
-	const defaults = await resetSessionDefaults();
-	setCache(defaults);
-	return defaults;
+	return resetSessionDefaultsQuery();
 }
 
-/** Test helper — clears in-memory cache between tests. */
-export function __resetSessionDefaultsStoreForTests(): void {
-	cached = null;
-	loadPromise = null;
+export function getSessionDefaultsSnapshot(): SessionDefaults {
+	return API_SESSION_DEFAULTS;
 }
+
+export function subscribeSessionDefaults(_listener: () => void): () => void {
+	return () => {};
+}
+
+export function __resetSessionDefaultsStoreForTests(): void {
+	// Query cache is reset in tests via a fresh QueryClient.
+}
+
+export {
+	loadSessionDefaults,
+	saveSessionDefaults,
+	resetSessionDefaults,
+};
