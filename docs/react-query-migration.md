@@ -1,67 +1,32 @@
-# React Query migration plan
+# Server state (TanStack Query)
 
-Move server/cacheable async state from hand-rolled hooks (`useAsyncResource`, Context health, pagination `useState`) to **TanStack Query v5** (`@tanstack/react-query`).
+**Status: complete** (phases 0–7). REST server/cacheable state uses **TanStack Query v5** (`@tanstack/react-query`). Live WebSockets, PCM capture, and the session reducer stay outside Query.
 
-Live WebSockets, PCM capture, and session reducer stay outside Query — they are push streams / local orchestration, not request/response cache.
-
-## Why
-
-Current pattern:
-
-| Surface | Today | Pain |
-| ------- | ----- | ---- |
-| Home overview | `useAsyncResource` + 4 parallel fetches in one blob | No cache, no dedupe, refetch = full remount of work |
-| History list | Custom offset pagination in `useHistorySessions` | Duplicates loading flags; no shared cache with Home recent |
-| Session report | `useAsyncResource` + defaults side-load | Report ↔ History list never share session row |
-| Backend health | `BackendHealthProvider` Context | Second cache of `/health`; Live `ensureReady` bypasses Query |
-| Session defaults | Module singleton + subscribers | Works, but not Query; fine as **client** store or Query `queryFn` over AsyncStorage |
-| Live session | `useLiveSession` mutations + WS | Correct domain; only REST create/delete should be Query mutations |
-
-Vanilla loading/error/refresh does not scale when:
-
-- Home and History both need sessions
-- Live stop should invalidate history/home
-- Focus / reconnect should refetch without bespoke `useEffect`s
-- Pagination, stale-while-revalidate, and request cancellation become per-hook reinventions
-
-## Non-goals (phase 0–3)
-
-- Do **not** put `/ws/frames` or `/ws/output` in Query.
-- Do **not** replace `useLiveSession` phase/metrics with Query.
-- Do **not** add Redux/Zustand for server state (Query is the server cache).
-- Optional later: PersistQueryClient + AsyncStorage for offline warm start — **not** required for first cut.
-
-## Target package
-
-| Package | Role |
-| ------- | ---- |
-| `@tanstack/react-query` | Queries + mutations (v5) |
-| Existing `@react-native-community/netinfo` | `onlineManager` (already in app) |
-
-Dev-only later: `@tanstack/react-query-devtools` (web) if useful.
-
-## Architecture after migration
+## Layout
 
 ```
 src/app/_layout.tsx
   QueryClientProvider
-    focusManager (AppState) + onlineManager (NetInfo)  // once at root
-    BackendHealthProvider  // thin wrapper over useQuery(['health']) OR delete Context
+    focusManager (AppState) + onlineManager (NetInfo)
+    BackendHealthProvider   // façade over useQuery(['health'])
     …
 
-src/api/                 // keep pure fetchers (queryFns call these)
+src/api/                 // pure fetchers (queryFns call these)
 src/queries/
+  client.ts              // QueryClient defaults
   keys.ts                // query key factory
+  native.ts              // RN focus / online wiring
   health.ts
-  history.ts
-  sessions.ts            // create/delete mutations
-  home.ts                // composed overview or parallel useQueries
-src/features/*/hooks/    // thin adapters → screens unchanged where possible
+  history.ts             // infinite list
+  historySession.ts      // session + inferences
+  home.ts                // shared overview query options
+  settings.ts            // AsyncStorage defaults via Query
+  sessions.ts            // create/delete + invalidation
+  test-utils.tsx
+src/features/*/hooks/    // thin adapters; screens keep stable APIs
 ```
 
-Screens keep calling feature hooks (`useHomeOverview`, `useHistorySessions`, …). Internals swap to Query; public hook shapes stay stable until a deliberate API cleanup.
-
-## Query key factory (canonical)
+## Query keys
 
 ```ts
 // src/queries/keys.ts
@@ -69,18 +34,14 @@ export const queryKeys = {
   health: ['health'] as const,
   history: {
     all: ['history'] as const,
-    sessions: (params?: { limit?: number; offset?: number; only_closed?: boolean }) =>
-      [...queryKeys.history.all, 'sessions', params ?? {}] as const,
-    session: (id: string) => [...queryKeys.history.all, 'session', id] as const,
-    inferences: (id: string, params?: object) =>
-      [...queryKeys.history.all, 'inferences', id, params ?? {}] as const,
-    buckets: (params: object) =>
-      [...queryKeys.history.all, 'buckets', params] as const,
-    events: (params?: object) =>
-      [...queryKeys.history.all, 'events', params ?? {}] as const,
+    sessions: (params?) => [...queryKeys.history.all, 'sessions', params ?? {}],
+    session: (id) => [...queryKeys.history.all, 'session', id],
+    inferences: (id, params?) => [...queryKeys.history.all, 'inferences', id, params ?? {}],
+    buckets: (params) => [...queryKeys.history.all, 'buckets', params],
+    events: (params?) => [...queryKeys.history.all, 'events', params ?? {}],
   },
   sessions: {
-    live: (id: string) => ['sessions', 'live', id] as const,
+    live: (id) => ['sessions', 'live', id],
   },
   settings: {
     defaults: ['settings', 'defaults'] as const,
@@ -88,144 +49,61 @@ export const queryKeys = {
 } as const;
 ```
 
-Invalidate by prefix: `queryClient.invalidateQueries({ queryKey: queryKeys.history.all })` after live stop / history delete.
+Invalidate history after live teardown: `invalidateQueries({ queryKey: queryKeys.history.all })`.
 
-## Default QueryClient policy
+## Feature → Query mapping
 
-Suggested defaults for this app (mobile + local backend):
+| Surface | Hook | Query API |
+| ------- | ---- | --------- |
+| Health | `BackendHealthProvider` / `ensureReady` | `useQuery` + `fetchQuery` (`healthQueryOptions`) |
+| History list | `useHistorySessions` | `useInfiniteQuery` (`historySessionsInfiniteOptions`) |
+| Session report | `useSessionReport` | `useQueries` (session + inferences) |
+| Home overview | `useHomeOverview` | `useQueries` (health, active, buckets, recent) |
+| Settings defaults | `useSessionDefaults` / form mutations | `useQuery` + `setQueryData` on save/reset |
+| Live REST | `useLiveSession` create/delete | `createLiveSessionMutation` / `deleteLiveSessionMutation` |
+
+## QueryClient defaults
 
 | Option | Value | Rationale |
 | ------ | ----- | --------- |
-| `staleTime` | 30_000 | Avoid hammering `/health` + history on every tab focus |
-| `gcTime` | 5 * 60_000 | Keep recent lists warm while navigating tabs |
-| `retry` | 1 (or `(n, err) => …`) | Don't spin on 4xx; retry once on network |
-| `refetchOnReconnect` | true | NetInfo → onlineManager |
-| `refetchOnWindowFocus` | true | AppState → focusManager (RN) |
+| `staleTime` | 30_000 | Avoid refetch hammer on tab focus |
+| `gcTime` | 5 * 60_000 | Keep lists warm while navigating |
+| `retry` | once, skip 4xx / client codes | Don't spin on validation errors |
+| `refetchOnReconnect` | true | NetInfo → `onlineManager` |
+| `refetchOnWindowFocus` | true | AppState → `focusManager` |
 
-Map `ApiError` in `throwOnError` / UI via existing `formatApiError`.
-
-## React Native wiring (install once)
-
-In root (or `src/queries/native.ts` imported from `_layout`):
-
-1. `onlineManager.setEventListener` → NetInfo (already used by `apiRequest`).
-2. `focusManager.setFocused` → `AppState` `'active'`.
-3. Wrap tree with `QueryClientProvider`.
-
-Place provider **outside** feature screens, **inside** `GestureHandlerRootView` / `SafeAreaProvider` (same level as today's `BackendHealthProvider`).
-
-## Migration phases
-
-### Phase 0 — Scaffold (no behavior change) ✅
-
-1. Add `@tanstack/react-query`.
-2. Create `src/queries/client.ts` (QueryClient singleton) + `src/queries/keys.ts`.
-3. Wire provider + focus/online in `_layout.tsx`.
-4. Document in `docs/tech-stack.md` + this file.
-5. Add Jest helper: wrap with `QueryClientProvider` + fresh client (`queries/test-utils.tsx`).
-
-**Exit:** app boots; no hooks migrated yet.
-
-### Phase 1 — Health (replace Context cache) ✅
-
-| Move | From | To |
-| ---- | ---- | -- |
-| `/health` poll | `BackendHealthProvider` | `useQuery({ queryKey: queryKeys.health, queryFn: getHealth })` |
-| `ensureReady` | Context method | `queryClient.fetchQuery` + `assertBackendHealthy` |
-
-**A (done):** Keep `BackendHealthProvider` as a thin façade over Query so screens don't churn.
-
-**Exit:** single `/health` cache; Live start uses `fetchQuery`; offline still clears error to offlineBanner.
-
-### Phase 2 — History list (infinite query) ✅
-
-Replace `useHistorySessions` offset state with `useInfiniteQuery` via
-`historySessionsInfiniteOptions()` in `src/queries/history.ts`.
-
-**Exit:** History pagination via Query; pull-to-refresh works.
-
-### Phase 3 — Session report ✅
-
-Split load into `historySessionQueryOptions` + `historyInferencesQueryOptions`;
-compose in `useSessionReport` via `useQueries`.
-
-**Exit:** Report shares session entity cache keys with future consumers.
-
-### Phase 4 — Home overview ✅
-
-Parallel `useQueries` sharing `health` + history session/bucket keys via
-`src/queries/home.ts`.
-
-**Exit:** Home KPIs reuse shared Query cache identities.
-
-### Phase 5 — Settings defaults ✅
-
-Session defaults loaded via `useQuery` (`sessionDefaultsQueryOptions`);
-save/reset use mutations that `setQueryData`. Store façade delegates to Query.
-
-**Exit:** one write path; Live/Settings/Home see updates through Query cache.
-
-### Phase 6 — Live REST mutations ✅
-
-`createLiveSessionMutation` / `deleteLiveSessionMutation` invalidate
-`queryKeys.history.all` (+ health) after teardown/unmount. WS stays imperative.
-
-**Exit:** stopping a live session refreshes History/Home without manual refresh.
-
-### Phase 7 — Cleanup ✅
-
-1. Deleted unused `useAsyncResource`.
-2. Architecture/tech-stack docs updated for Query as current data layer.
-3. Query key factory trimmed; feature hooks keep stable screen APIs.
-
-**Exit:** REST surfaces use Query; WS/capture untouched.
-
-## What stays vanilla
+## Out of Query (vanilla)
 
 | Area | Reason |
 | ---- | ------ |
-| `useLiveSession` phase/metrics/reducer | High-frequency local UI state |
-| `useMicCapture` / `useCallCapture` | Native streams |
-| `connectLiveSession` / managed sockets | Connection lifecycle ≠ HTTP cache |
-| Chart throttling (`CHART_FLUSH_MS`) | Render perf, not server state |
-| UI form draft state in Settings | Local until save mutation |
+| `useLiveSession` phase / metrics / reducer | High-frequency local UI |
+| `useMicCapture` / `useCallCapture` | Native push streams |
+| `connectLiveSession` / managed sockets | Connection lifecycle |
+| Chart throttle (`CHART_FLUSH_MS`) | Render perf |
+| Settings form draft fields | Local until save mutation |
 
-## Testing plan
+## Completed phases
 
-| Layer | Approach |
-| ----- | -------- |
-| QueryFns | Existing API module tests unchanged |
-| Hooks | `renderHook` + fresh `QueryClient` (`retry: false`) |
-| Invalidation | Assert `queryClient.getQueryState` after mutation |
-| RN focus/online | Unit-test wiring modules with mocked AppState/NetInfo |
+| Phase | Commit theme |
+| ----- | ------------ |
+| 0 | Scaffold: package, client, keys, RN wiring, provider |
+| 1 | Health → Query façade |
+| 2 | History infinite query |
+| 3 | Session report `useQueries` |
+| 4 | Home shared keys |
+| 5 | Settings defaults Query cache |
+| 6 | Live REST mutations + invalidation |
+| 7 | Remove `useAsyncResource`; docs cleanup |
 
-Avoid MSW unless already planned; keep using real `apiRequest` mocks / fetch mocks as today.
+## Follow-ups (optional)
 
-## Rollout order (summary)
-
-```
-0 Scaffold → 1 Health → 2 History infinite → 3 Report → 4 Home → 5 Settings (optional Query) → 6 Live mutations → 7 Cleanup
-```
-
-Each phase: one PR, typecheck + tests green, screens visually unchanged.
-
-## Success criteria
-
-- No feature screen owns raw `useState` loading/error for REST (except local UI).
-- `/health` and history session entities have **one** cache identity.
-- App foreground + reconnect refetch without custom timers.
-- Live stop invalidates history/home.
-- WS/capture code paths untouched by Query imports.
-
-## Open decisions (resolve in Phase 0)
-
-1. Health Context façade vs delete Context.
-2. Home: parallel `useQueries` vs single overview key.
-3. Settings: keep module store vs Query over AsyncStorage.
-4. Whether to introduce `@tanstack/react-query-persist-client` in Phase 7 or never.
+- Prefetch session detail on History row press
+- `@tanstack/react-query-persist-client` for warm start
+- Delete remaining settings store façade once all callers use `@/queries/settings`
+- Devtools on web only
 
 ## References
 
 - TanStack Query React Native: focusManager + onlineManager
-- Existing API modules: `src/api/{health,history,sessions}.ts`
-- Current async helpers: `src/hooks/useAsyncResource.ts`, `src/features/health/BackendHealthProvider.tsx`, `src/features/history/hooks/useHistorySessions.ts`
+- API modules: `src/api/{health,history,sessions}.ts`
+- Architecture overview: [`architecture.md`](./architecture.md)

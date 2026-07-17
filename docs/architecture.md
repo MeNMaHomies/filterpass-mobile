@@ -25,11 +25,12 @@ Backend contract: [`api.md`](./api.md). Stack versions: [`tech-stack.md`](./tech
 ```
 src/app/(tabs)/*          routes only — compose feature screens/hooks
 src/features/<name>/      screens, components, hooks for a domain
-src/api/                  HTTP + WS — no UI
+src/api/                  HTTP + WS fetchers — no UI
+src/queries/              TanStack Query keys, options, mutations
 src/components/           shared presentational UI
 src/lib/                  pure helpers
 src/config/               env
-src/types/                shared types
+src/types/                shared types (Zod-inferred wire types)
 modules/*                 local Expo native modules (Android Kotlin)
 ```
 
@@ -140,7 +141,8 @@ Design intent: **best-effort** mixed mono. Client does not gate on silence or fa
 | ------------------------- | --------------------------------------------------------- |
 | API base URL              | `EXPO_PUBLIC_API_URL` → `src/config/env.ts`               |
 | WS base                   | Derived (`ws` / `wss`); Android emulator localhost remap  |
-| Session defaults          | `src/features/settings/sessionDefaults.ts` + AsyncStorage |
+| Session defaults          | AsyncStorage + Query cache (`src/queries/settings.ts`)    |
+| REST server state         | `src/queries/*` + `QueryClientProvider` in `_layout`      |
 | Android package / plugins | `app.json` + call-capture config plugin                   |
 
 Scripts:
@@ -159,11 +161,12 @@ Scripts:
 | Layer               | Where                                                                 |
 | ------------------- | --------------------------------------------------------------------- |
 | JS unit / component | `src/**/__tests__`, Jest + jest-expo                                  |
+| Query keys / pages  | `src/queries/__tests__`                                               |
 | Live domain / WS    | `features/live/domain`, `features/live/session`, `src/api/ws/__tests__` |
 | Native PCM helpers  | `modules/filterpass-call-capture/android/src/test` (JUnit)            |
 
 ## Extension points
 
-- New REST resources → `src/api/*` + `src/types/api.ts` + Zod in `src/api/schemas.ts` + update `docs/api.md` when backend changes.
+- New REST resources → `src/api/*` + Zod in `src/api/schemas.ts` + `src/types/api.ts` (`z.infer`) + `src/queries/*` options/keys + update `docs/api.md` when backend changes.
 - New Live UI phases → `src/features/live/screens/*` driven by `useLiveSession` phase.
 - Deeper call capture (background, OEM-specific sources) → Kotlin under `modules/filterpass-call-capture` only; keep JS event contract stable (`onPcm` / `onStatus`).
