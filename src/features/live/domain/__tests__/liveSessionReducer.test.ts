@@ -93,6 +93,7 @@ describe('reduceOutputMessage', () => {
 		expect(result.state.hasScored).toBe(true);
 		expect(result.state.metrics.label).toBe('SPOOF');
 		expect(result.state.metrics.sessionScore).toBe(0.85);
+		expect(result.state.metrics.lastChunkProb).toBe(0.9);
 		expect(result.effect.type).toBe('haptic_spoof');
 	});
 
@@ -121,7 +122,28 @@ describe('reduceFramesMessage', () => {
 			voiced_samples: 320,
 		});
 		expect(result.state.metrics.framesSeen).toBe(42);
+		expect(result.state.metrics.lastVoiced).toBe(true);
+		expect(result.state.metrics.voicedAcks).toBe(1);
+		expect(result.state.metrics.totalAcks).toBe(1);
 		expect(result.effect.type).toBe('none');
+	});
+
+	it('tracks silent acks', () => {
+		const voiced = reduceFramesMessage(createInitialLiveSessionModel(), {
+			type: 'ack',
+			frame_idx: 1,
+			voiced: true,
+			voiced_samples: 320,
+		});
+		const silent = reduceFramesMessage(voiced.state, {
+			type: 'ack',
+			frame_idx: 2,
+			voiced: false,
+			voiced_samples: 0,
+		});
+		expect(silent.state.metrics.lastVoiced).toBe(false);
+		expect(silent.state.metrics.voicedAcks).toBe(1);
+		expect(silent.state.metrics.totalAcks).toBe(2);
 	});
 
 	it('marks soft error without changing phase', () => {

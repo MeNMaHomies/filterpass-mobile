@@ -54,6 +54,11 @@ export type LiveSessionState = {
 	framesSeen: number;
 	lastRtf: number | null;
 	lastLatencyMs: number | null;
+	lastChunkProb: number | null;
+	lastVoiced: boolean | null;
+	voicedAcks: number;
+	totalAcks: number;
+	startedAt: number | null;
 	connectionStatus: ConnectionStatus;
 	defaults: SessionDefaults;
 	error: string | null;

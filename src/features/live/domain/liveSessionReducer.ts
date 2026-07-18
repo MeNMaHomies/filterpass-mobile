@@ -100,6 +100,7 @@ export function reduceOutputMessage(
 					label: nextLabel,
 					lastRtf: msg.rtf,
 					lastLatencyMs: msg.latency_ms,
+					lastChunkProb: msg.chunk_prob,
 					chunkHistory: appendChunkScore(
 						state.metrics.chunkHistory,
 						msg.session_score,
@@ -132,6 +133,9 @@ export function reduceFramesMessage(
 				metrics: {
 					...state.metrics,
 					framesSeen: msg.frame_idx,
+					lastVoiced: msg.voiced,
+					voicedAcks: state.metrics.voicedAcks + (msg.voiced ? 1 : 0),
+					totalAcks: state.metrics.totalAcks + 1,
 				},
 			},
 			effect: { type: 'none' },

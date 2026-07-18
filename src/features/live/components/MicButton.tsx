@@ -9,25 +9,31 @@ import Animated, {
 	withSequence,
 	withTiming,
 } from 'react-native-reanimated';
-import { Mic } from 'lucide-react-native';
+import { Mic, Phone } from 'lucide-react-native';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { useReduceMotion } from '@/hooks/useReduceMotion';
+import type { CaptureMode } from '../types';
 import { colors } from '@/theme/tokens';
 
 type MicButtonProps = {
 	onPress?: () => void;
 	disabled?: boolean;
 	busy?: boolean;
+	mode?: CaptureMode;
 };
 
 export function MicButton({
 	onPress,
 	disabled = false,
 	busy = false,
+	mode = 'mic',
 }: MicButtonProps) {
 	const reduceMotion = useReduceMotion();
 	const isDisabled = disabled || busy;
 	const pulse = useSharedValue(0);
+	const isCall = mode === 'call';
+	const Icon = isCall ? Phone : Mic;
+	const startLabel = isCall ? 'Start Call Scan' : 'Start listening';
 
 	useEffect(() => {
 		if (reduceMotion || busy) {
@@ -62,7 +68,7 @@ export function MicButton({
 			disabled={isDisabled}
 			style={[styles.button, isDisabled && styles.disabled]}
 			accessibilityRole="button"
-			accessibilityLabel={busy ? 'Connecting' : 'Start listening'}
+			accessibilityLabel={busy ? 'Connecting' : startLabel}
 			accessibilityState={{ disabled: isDisabled, busy }}
 			scaleTo={0.94}
 			haptic={!busy}
@@ -71,7 +77,7 @@ export function MicButton({
 				<ActivityIndicator color={colors.primary} />
 			) : (
 				<Animated.View style={animatedStyle}>
-					<Mic size={28} color={colors.primary} strokeWidth={1.75} />
+					<Icon size={28} color={colors.primary} strokeWidth={1.75} />
 				</Animated.View>
 			)}
 		</PressableScale>

@@ -1,15 +1,12 @@
 import { ScrollView, View, Text, StyleSheet } from 'react-native';
-import {
-	Button,
-	Card,
-	ChunkSparkline,
-	ErrorBanner,
-	Eyebrow,
-	LiveDot,
-	ScoreGauge,
-	StatusBadge,
-} from '@/components';
+import { Button, Card, ChunkSparkline, ErrorBanner, ScoreGauge } from '@/components';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
+import { LiveListeningPill } from '../components/LiveListeningPill';
+import { LiveMomentOverall } from '../components/LiveMomentOverall';
+import { LiveThresholdMarker } from '../components/LiveThresholdMarker';
+import { LiveVerdictHeader } from '../components/LiveVerdictHeader';
+import { LiveWaveform } from '../components/LiveWaveform';
+import type { CaptureMode } from '../types';
 import type { SessionLabel } from '@/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fontFamilies } from '@/theme/typography';
@@ -19,9 +16,14 @@ type LiveActiveViewProps = {
 	chunkIdx?: number;
 	label?: SessionLabel;
 	chunkHistory?: number[];
-	framesSeen?: number;
-	lastRtf?: number | null;
-	lastLatencyMs?: number | null;
+	lastChunkProb?: number | null;
+	spoofThreshold?: number;
+	realThreshold?: number;
+	lastVoiced?: boolean | null;
+	voicedAcks?: number;
+	totalAcks?: number;
+	startedAt?: number | null;
+	captureMode?: CaptureMode;
 	error?: string | null;
 	onStop?: () => void;
 	onClearError?: () => void;
@@ -29,164 +31,142 @@ type LiveActiveViewProps = {
 
 export function LiveActiveView({
 	sessionScore = 0,
-	chunkIdx = 0,
 	label = 'REAL',
 	chunkHistory = [],
-	framesSeen = 0,
-	lastRtf = null,
-	lastLatencyMs = null,
+	lastChunkProb = null,
+	spoofThreshold = 0.6,
+	realThreshold = 0.4,
+	lastVoiced = null,
+	voicedAcks = 0,
+	totalAcks = 0,
+	startedAt = null,
+	captureMode = 'mic',
 	error,
 	onStop,
 	onClearError,
 }: LiveActiveViewProps) {
 	const { bottomPadding, ...scrollProps } = useScrollScreenProps();
+	const footerPad = bottomPadding;
 
 	return (
-		<ScrollView
-			contentContainerStyle={[styles.scroll, { paddingBottom: bottomPadding }]}
-			showsVerticalScrollIndicator={false}
-			keyboardShouldPersistTaps="handled"
-			{...scrollProps}
-		>
-			{error ? (
-				<ErrorBanner
-					message={error}
-					onRetry={onClearError}
-					retryLabel="Dismiss"
+		<View style={styles.fill}>
+			<ScrollView
+				style={styles.scroll}
+				contentContainerStyle={[styles.body, { paddingBottom: 16 }]}
+				showsVerticalScrollIndicator={false}
+				keyboardShouldPersistTaps="handled"
+				{...scrollProps}
+			>
+				{error ? (
+					<ErrorBanner
+						message={error}
+						onRetry={onClearError}
+						retryLabel="Dismiss"
+					/>
+				) : null}
+
+				<LiveVerdictHeader
+					label={label}
+					startedAt={startedAt}
+					captureMode={captureMode}
 				/>
-			) : null}
 
-			<Card glow style={styles.gaugeCard}>
-				<View style={styles.gaugeHeader}>
-					<StatusBadge label={label} variant={label} live />
-					<View style={styles.chunkRow}>
-						<LiveDot />
-						<Text style={styles.chunkLabel}>chunk {chunkIdx}</Text>
-					</View>
-				</View>
-				<ScoreGauge score={sessionScore} label="session score" />
-			</Card>
+				<LiveWaveform
+					label={label}
+					lastVoiced={lastVoiced}
+					voicedAcks={voicedAcks}
+					totalAcks={totalAcks}
+				/>
 
-			<Card style={styles.section}>
-				<Eyebrow>Score history</Eyebrow>
-				{chunkHistory.length > 0 ? (
-					<ChunkSparkline chunks={chunkHistory} />
-				) : (
-					<Text style={styles.empty}>Waiting for scores…</Text>
-				)}
-			</Card>
+				<Card glow style={styles.gaugeCard}>
+					<ScoreGauge score={sessionScore} label="confidence" />
+					<LiveThresholdMarker
+						realThreshold={realThreshold}
+						spoofThreshold={spoofThreshold}
+						sessionScore={sessionScore}
+					/>
+				</Card>
 
-			<View style={styles.metrics}>
-				{[
-					[
-						'Speed',
-						lastRtf !== null ? lastRtf.toFixed(2) : '—',
-						'Real-time factor — lower is faster than real-time',
-					],
-					[
-						'Frames',
-						framesSeen.toLocaleString(),
-						'Audio frames sent to the detector',
-					],
-					[
-						'Latency',
-						lastLatencyMs !== null
-							? `${Math.round(lastLatencyMs)}ms`
-							: '—',
-						'Model inference time for the last chunk',
-					],
-				].map(([k, v, hint]) => (
-					<View
-						key={k}
-						style={styles.metric}
-						accessible
-						accessibilityLabel={`${k}: ${v}. ${hint}`}
-					>
-						<Text style={styles.metricLabel}>{k}</Text>
-						<Text style={styles.metricValue}>{v}</Text>
-					</View>
-				))}
+				<LiveMomentOverall
+					chunkProb={lastChunkProb}
+					sessionScore={sessionScore}
+				/>
+
+				<Card style={styles.trendCard}>
+					<Text style={styles.trendTitle}>How confidence moved</Text>
+					{chunkHistory.length > 0 ? (
+						<ChunkSparkline
+							chunks={chunkHistory}
+							realThreshold={realThreshold}
+							spoofThreshold={spoofThreshold}
+						/>
+					) : (
+						<Text style={styles.empty}>Waiting for scores…</Text>
+					)}
+				</Card>
+
+				<LiveListeningPill
+					lastVoiced={lastVoiced}
+					voicedAcks={voicedAcks}
+					totalAcks={totalAcks}
+				/>
+			</ScrollView>
+
+			<View style={[styles.footer, { paddingBottom: footerPad }]}>
+				<Button
+					variant="danger"
+					label="Stop session"
+					style={styles.stopBtn}
+					onPress={onStop}
+					accessibilityHint="Ends the live detection session"
+				/>
 			</View>
-
-			<Button
-				variant="danger"
-				label="Stop session"
-				style={styles.stopBtn}
-				onPress={onStop}
-				accessibilityHint="Ends the live detection session"
-			/>
-		</ScrollView>
+		</View>
 	);
 }
 
 const styles = StyleSheet.create({
+	fill: {
+		flex: 1,
+	},
 	scroll: {
+		flex: 1,
+	},
+	body: {
+		flexGrow: 1,
 		paddingHorizontal: spacing.screenX,
-		paddingTop: 12,
+		paddingTop: 8,
+		gap: 14,
 	},
 	gaugeCard: {
 		paddingTop: 16,
-		paddingBottom: 12,
+		paddingBottom: 14,
 		paddingHorizontal: 16,
-		marginBottom: 12,
-	},
-	gaugeHeader: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 4,
 	},
-	chunkRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 6,
-	},
-	chunkLabel: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 11,
-		color: colors.muted,
-	},
-	section: {
+	trendCard: {
 		paddingHorizontal: 14,
-		paddingVertical: 12,
-		marginBottom: 10,
+		paddingVertical: 14,
+		gap: 10,
+	},
+	trendTitle: {
+		fontFamily: fontFamilies.sansMedium,
+		fontSize: 13,
+		color: colors.muted,
 	},
 	empty: {
 		fontFamily: fontFamilies.sans,
 		fontSize: 13,
 		color: colors.muted2,
-		marginTop: 6,
 	},
-	metrics: {
-		flexDirection: 'row',
-		gap: 8,
-		marginBottom: 20,
-	},
-	metric: {
-		flex: 1,
-		backgroundColor: colors.secondary,
-		borderRadius: 10,
-		paddingVertical: 9,
-		paddingHorizontal: 8,
-		alignItems: 'center',
-		borderWidth: 1,
-		borderColor: colors.border,
-		minHeight: 52,
-		justifyContent: 'center',
-	},
-	metricLabel: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 10,
-		color: colors.muted2,
-	},
-	metricValue: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 14,
-		color: colors.foreground,
-		marginTop: 2,
+	footer: {
+		paddingHorizontal: spacing.screenX,
+		paddingTop: 8,
+		borderTopWidth: 1,
+		borderTopColor: colors.border,
+		backgroundColor: colors.background,
 	},
 	stopBtn: {
 		width: '100%',
-		marginTop: 4,
 	},
 });

@@ -13,6 +13,10 @@ export type LiveMetricSnapshot = {
 	framesSeen: number;
 	lastRtf: number | null;
 	lastLatencyMs: number | null;
+	lastChunkProb: number | null;
+	lastVoiced: boolean | null;
+	voicedAcks: number;
+	totalAcks: number;
 };
 
 export function createEmptyMetrics(): LiveMetricSnapshot {
@@ -26,6 +30,10 @@ export function createEmptyMetrics(): LiveMetricSnapshot {
 		framesSeen: 0,
 		lastRtf: null,
 		lastLatencyMs: null,
+		lastChunkProb: null,
+		lastVoiced: null,
+		voicedAcks: 0,
+		totalAcks: 0,
 	};
 }
 
