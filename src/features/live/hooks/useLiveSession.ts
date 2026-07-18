@@ -71,6 +71,12 @@ export function useLiveSession(): LiveSessionState {
 	const [meta, setMeta] = useState<SessionMeta>(INITIAL_META);
 	const [chartHistory, setChartHistory] = useState<number[]>([]);
 	const [chartFramesSeen, setChartFramesSeen] = useState(0);
+	const [voiceSnapshot, setVoiceSnapshot] = useState({
+		lastVoiced: null as boolean | null,
+		voicedAcks: 0,
+		totalAcks: 0,
+	});
+	const [startedAt, setStartedAt] = useState<number | null>(null);
 	const { defaults } = useSessionDefaults();
 	const [error, setError] = useState<string | null>(null);
 
@@ -96,8 +102,14 @@ export function useLiveSession(): LiveSessionState {
 
 	useEffect(() => {
 		flushChartRef.current = throttle(() => {
-			setChartHistory([...modelRef.current.metrics.chunkHistory]);
-			setChartFramesSeen(modelRef.current.metrics.framesSeen);
+			const { metrics } = modelRef.current;
+			setChartHistory([...metrics.chunkHistory]);
+			setChartFramesSeen(metrics.framesSeen);
+			setVoiceSnapshot({
+				lastVoiced: metrics.lastVoiced,
+				voicedAcks: metrics.voicedAcks,
+				totalAcks: metrics.totalAcks,
+			});
 		}, CHART_FLUSH_MS);
 	}, []);
 
@@ -169,6 +181,8 @@ export function useLiveSession(): LiveSessionState {
 		setMeta(INITIAL_META);
 		setChartHistory([]);
 		setChartFramesSeen(0);
+		setVoiceSnapshot({ lastVoiced: null, voicedAcks: 0, totalAcks: 0 });
+		setStartedAt(null);
 		stoppingRef.current = false;
 	}, []);
 
@@ -336,6 +350,7 @@ export function useLiveSession(): LiveSessionState {
 			} else {
 				await micCapture.start(sessionDefaults.sample_rate);
 			}
+			setStartedAt(Date.now());
 		} catch (e) {
 			void hapticError();
 			const idle = createInitialLiveSessionModel();
@@ -377,6 +392,11 @@ export function useLiveSession(): LiveSessionState {
 		framesSeen: chartFramesSeen,
 		lastRtf: metrics.lastRtf,
 		lastLatencyMs: metrics.lastLatencyMs,
+		lastChunkProb: metrics.lastChunkProb,
+		lastVoiced: voiceSnapshot.lastVoiced,
+		voicedAcks: voiceSnapshot.voicedAcks,
+		totalAcks: voiceSnapshot.totalAcks,
+		startedAt,
 		connectionStatus: deriveConnectionStatus(phase),
 		defaults,
 		error,

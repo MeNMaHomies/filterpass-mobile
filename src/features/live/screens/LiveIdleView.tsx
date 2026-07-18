@@ -48,7 +48,9 @@ export function LiveIdleView({
 		connectionStatus === 'Connecting' ? 'WARMUP' : 'IDLE';
 	const isCall = captureMode === 'call';
 	const a11yReady = accessibility.enabled && accessibility.connected;
-	const canStart = !busy && (!isCall || (callCaptureAvailable && a11yReady));
+	const callReady = callCaptureAvailable && a11yReady;
+	const showCallSetup = isCall && !callReady;
+	const canStart = !busy && (!isCall || callReady);
 
 	useEffect(() => {
 		if (!isCall || !callCaptureAvailable) return;
@@ -62,10 +64,18 @@ export function LiveIdleView({
 	const hint = busy
 		? 'Connecting…'
 		: isCall
-			? a11yReady
+			? callReady
 				? 'Tap to start Call Scan'
-				: 'Enable Accessibility first'
+				: callCaptureAvailable
+					? 'Enable Accessibility first'
+					: 'Call Scan needs Android'
 			: 'Tap to start listening';
+
+	const a11yStatusLabel = !callCaptureAvailable
+		? 'Android only'
+		: accessibility.enabled
+			? 'Enabled, reconnecting…'
+			: 'Off';
 
 	return (
 		<ScrollView
@@ -89,54 +99,44 @@ export function LiveIdleView({
 				disabled={busy}
 			/>
 
-			{isCall ? (
+			{showCallSetup ? (
 				<Card style={styles.callCard}>
 					<View style={styles.callHeader}>
 						<Phone size={16} color={colors.primary} strokeWidth={1.75} />
 						<Eyebrow>Call Scan setup</Eyebrow>
 					</View>
 					<Text style={styles.callBody}>
-						Best-effort mix of mic and call-path audio. Enable FilterPass Call
-						Capture under Accessibility, then start a phone call and tap below.
+						{callCaptureAvailable
+							? 'Enable FilterPass Call Capture under Accessibility, then start a phone call and tap below.'
+							: 'Call Scan mixes mic and call-path audio. It is available on Android showcase builds only.'}
 					</Text>
 					<View style={styles.callStatusRow}>
 						<Text style={styles.callStatusLabel}>Accessibility</Text>
-						<Text
-							style={[
-								styles.callStatusValue,
-								a11yReady ? styles.callStatusOk : styles.callStatusWait,
-							]}
-						>
-							{!callCaptureAvailable
-								? 'Android only'
-								: a11yReady
-									? 'Ready'
-									: accessibility.enabled
-										? 'Enabled, reconnecting…'
-										: 'Off'}
+						<Text style={[styles.callStatusValue, styles.callStatusWait]}>
+							{a11yStatusLabel}
 						</Text>
 					</View>
-					{callCaptureAvailable && !a11yReady ? (
-						<Button
-							variant="solid"
-							label="Open Accessibility settings"
-							style={styles.callButton}
-							onPress={() => {
-								try {
-									openAccessibilitySettings();
-								} catch {
-									onClearError?.();
-								}
-							}}
-						/>
-					) : null}
 					{callCaptureAvailable ? (
-						<Button
-							variant="ghost"
-							label="Refresh status"
-							style={styles.callButton}
-							onPress={refreshAccessibility}
-						/>
+						<>
+							<Button
+								variant="solid"
+								label="Open Accessibility settings"
+								style={styles.callButton}
+								onPress={() => {
+									try {
+										openAccessibilitySettings();
+									} catch {
+										onClearError?.();
+									}
+								}}
+							/>
+							<Button
+								variant="ghost"
+								label="Refresh status"
+								style={styles.callButton}
+								onPress={refreshAccessibility}
+							/>
+						</>
 					) : null}
 				</Card>
 			) : null}
@@ -146,6 +146,7 @@ export function LiveIdleView({
 					onPress={onMicPress}
 					busy={busy}
 					disabled={!canStart}
+					mode={captureMode}
 				/>
 				<Text style={styles.hint}>{hint}</Text>
 				<View style={styles.badgeWrap}>
@@ -264,9 +265,6 @@ const styles = StyleSheet.create({
 	callStatusValue: {
 		fontFamily: fontFamilies.mono,
 		fontSize: 12,
-	},
-	callStatusOk: {
-		color: colors.accent,
 	},
 	callStatusWait: {
 		color: colors.amber,

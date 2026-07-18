@@ -16,9 +16,7 @@ export default function LiveRoute() {
 	const subtitle =
 		live.sessionId && live.phase !== 'idle'
 			? `sess_${shortSessionId(live.sessionId)}`
-			: live.captureMode === 'call'
-				? 'Call Scan'
-				: undefined;
+			: undefined;
 
 	const phaseKey =
 		live.phase === 'connecting'
@@ -58,9 +56,14 @@ export default function LiveRoute() {
 					chunkIdx={live.chunkIdx}
 					label={live.label}
 					chunkHistory={live.chunkHistory}
-					framesSeen={live.framesSeen}
-					lastRtf={live.lastRtf}
-					lastLatencyMs={live.lastLatencyMs}
+					lastChunkProb={live.lastChunkProb}
+					spoofThreshold={live.spoofThreshold}
+					realThreshold={live.realThreshold}
+					lastVoiced={live.lastVoiced}
+					voicedAcks={live.voicedAcks}
+					totalAcks={live.totalAcks}
+					startedAt={live.startedAt}
+					captureMode={live.captureMode}
 					error={live.error}
 					onStop={requestStop}
 					onClearError={live.clearError}

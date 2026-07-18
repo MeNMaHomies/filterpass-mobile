@@ -44,3 +44,4 @@ example
 /android
 # Added by code-review-graph
 .code-review-graph/
+.VSCodeCounter/
