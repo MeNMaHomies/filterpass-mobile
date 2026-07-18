@@ -5,6 +5,7 @@ export { EmptyState } from './EmptyState';
 export { ErrorBanner } from './ErrorBanner';
 export { Eyebrow } from './Eyebrow';
 export { LiveDot } from './LiveDot';
+export { LogoBadge } from './LogoBadge';
 export { MotiEnter } from './MotiEnter';
 export { MotiPhase } from './MotiPhase';
 export { OfflineBanner } from './OfflineBanner';

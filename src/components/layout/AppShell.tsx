@@ -4,7 +4,8 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Eyebrow, ErrorBanner, OfflineBanner } from '@/components/ui';
+import { ErrorBanner, OfflineBanner } from '@/components/ui';
+import { LogoBadge } from '@/components/ui/LogoBadge';
 import { useBackendHealth } from '@/features/health';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { colors, spacing, titleGradient } from '@/theme/tokens';
@@ -52,7 +53,10 @@ export function AppShell({
 						</Pressable>
 					) : null}
 					<View style={styles.headerText}>
-						<Eyebrow>FilterPass</Eyebrow>
+						<View style={styles.brand}>
+							<LogoBadge />
+							<Text style={styles.brandName}>FilterPass</Text>
+						</View>
 						<MaskedView
 							maskElement={<Text style={styles.titleMask}>{title}</Text>}
 						>
@@ -127,6 +131,18 @@ const styles = StyleSheet.create({
 	},
 	headerText: {
 		flex: 1,
+	},
+	brand: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+	},
+	brandName: {
+		fontFamily: fontFamilies.monoMedium,
+		fontSize: 10,
+		letterSpacing: 1.7,
+		textTransform: 'uppercase',
+		color: colors.muted2,
 	},
 	titleMask: {
 		fontFamily: fontFamilies.sansSemibold,
