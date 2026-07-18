@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { SessionLabel } from '@/types';
 import type { CaptureMode } from '../types';
@@ -16,24 +16,29 @@ type LiveVerdictHeaderProps = {
 	captureMode: CaptureMode;
 };
 
+function subscribeSecondTick(onStoreChange: () => void) {
+	const id = setInterval(onStoreChange, 1000);
+	return () => clearInterval(id);
+}
+
+function getSecondSnapshot() {
+	return Math.floor(Date.now() / 1000);
+}
+
 export function LiveVerdictHeader({
 	label,
 	startedAt,
 	captureMode,
 }: LiveVerdictHeaderProps) {
-	const [elapsed, setElapsed] = useState(0);
-
-	useEffect(() => {
-		if (!startedAt) {
-			setElapsed(0);
-			return;
-		}
-		const tick = () =>
-			setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
-		tick();
-		const id = setInterval(tick, 1000);
-		return () => clearInterval(id);
-	}, [startedAt]);
+	const nowSec = useSyncExternalStore(
+		subscribeSecondTick,
+		getSecondSnapshot,
+		getSecondSnapshot,
+	);
+	const elapsed =
+		startedAt == null
+			? 0
+			: Math.max(0, nowSec - Math.floor(startedAt / 1000));
 
 	const subline = startedAt
 		? `Listening · ${formatElapsed(elapsed)} · ${formatCaptureModeLabel(captureMode)}`
