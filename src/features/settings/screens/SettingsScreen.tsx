@@ -77,25 +77,6 @@ export function SettingsScreen() {
 				</Text>
 			) : null}
 
-			<Eyebrow>Audio</Eyebrow>
-			<Card style={styles.group}>
-				{[
-					['Sample rate', `${defaults.sample_rate} Hz`],
-					['Chunk duration', `${defaults.chunk_duration_s} s`],
-					['Max frame', '32 KB'],
-				].map(([k, v], i, arr) => (
-					<View
-						key={k}
-						style={[styles.row, i < arr.length - 1 && styles.rowBorder]}
-						accessible
-						accessibilityLabel={`${k}: ${v}`}
-					>
-						<Text style={styles.rowLabel}>{k}</Text>
-						<Text style={styles.rowValue}>{v}</Text>
-					</View>
-				))}
-			</Card>
-
 			<Eyebrow>Smoothing</Eyebrow>
 			<Card style={styles.group}>
 				<View style={styles.sliderHeader}>
@@ -253,27 +234,6 @@ const styles = StyleSheet.create({
 		padding: 14,
 		marginBottom: 12,
 		marginTop: 6,
-	},
-	row: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		paddingVertical: 10,
-		minHeight: 44,
-		alignItems: 'center',
-	},
-	rowBorder: {
-		borderBottomWidth: 1,
-		borderBottomColor: colors.border,
-	},
-	rowLabel: {
-		fontFamily: fontFamilies.sans,
-		fontSize: 14,
-		color: colors.muted,
-	},
-	rowValue: {
-		fontFamily: fontFamilies.mono,
-		fontSize: 14,
-		color: colors.foreground,
 	},
 	sliderHeader: {
 		flexDirection: 'row',

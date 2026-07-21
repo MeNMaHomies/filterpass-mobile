@@ -39,8 +39,6 @@ describe('outputScoreSchema', () => {
 describe('sessionDefaultsSchema', () => {
 	it('rejects out-of-range spoof threshold', () => {
 		const result = sessionDefaultsSchema.safeParse({
-			sample_rate: 16000,
-			chunk_duration_s: 0.5,
 			ema_alpha: 0.3,
 			spoof_threshold: 2,
 		});

@@ -39,8 +39,6 @@ describe('sessionDefaults', () => {
 		mockStorage.set(
 			'@filterpass/session_defaults',
 			JSON.stringify({
-				sample_rate: 16000,
-				chunk_duration_s: 0.5,
 				ema_alpha: 0.4,
 				real_threshold: 0.35,
 				spoof_threshold: 0.65,
@@ -49,14 +47,40 @@ describe('sessionDefaults', () => {
 			}),
 		);
 		await expect(loadSessionDefaults()).resolves.toEqual({
-			sample_rate: 16000,
-			chunk_duration_s: 0.5,
 			ema_alpha: 0.4,
 			real_threshold: 0.35,
 			spoof_threshold: 0.65,
 			vad_mode: 1,
 			vad_frame_ms: 20,
 		});
+	});
+
+	it('removes fixed audio config from legacy storage', async () => {
+		mockStorage.set(
+			'@filterpass/session_defaults',
+			JSON.stringify({
+				sample_rate: 8000,
+				chunk_duration_s: 0.5,
+				chunk_overlap_s: 0.25,
+				ema_alpha: 0.4,
+				real_threshold: 0.35,
+				spoof_threshold: 0.65,
+				vad_mode: 1,
+				vad_frame_ms: 20,
+			}),
+		);
+
+		const expected = {
+			ema_alpha: 0.4,
+			real_threshold: 0.35,
+			spoof_threshold: 0.65,
+			vad_mode: 1,
+			vad_frame_ms: 20,
+		};
+		await expect(loadSessionDefaults()).resolves.toEqual(expected);
+		expect(
+			JSON.parse(mockStorage.get('@filterpass/session_defaults') ?? ''),
+		).toEqual(expected);
 	});
 
 	it('backfills real_threshold and VAD from legacy storage', async () => {
@@ -91,6 +115,21 @@ describe('sessionDefaults', () => {
 				spoof_threshold: 5,
 			}),
 		).rejects.toThrow();
+	});
+
+	it('does not persist fixed audio config', async () => {
+		const defaultsWithLegacyAudio = {
+			...API_SESSION_DEFAULTS,
+			sample_rate: 8000,
+			chunk_duration_s: 0.5,
+			chunk_overlap_s: 0.25,
+		};
+
+		await saveSessionDefaults(defaultsWithLegacyAudio);
+
+		expect(
+			JSON.parse(mockStorage.get('@filterpass/session_defaults') ?? ''),
+		).toEqual(API_SESSION_DEFAULTS);
 	});
 
 	it('clamps real below spoof when editing thresholds', () => {

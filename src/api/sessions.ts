@@ -10,13 +10,14 @@ import type {
 	CreateSessionResponse,
 	LiveSession,
 } from '@/types/api';
+import { FIXED_SESSION_CONFIG } from '@/config/session';
 
 export function createSession(
 	body: CreateSessionRequest = {},
 ): Promise<CreateSessionResponse> {
 	return apiRequest<CreateSessionResponse>('/sessions', {
 		method: 'POST',
-		body,
+		body: { ...body, ...FIXED_SESSION_CONFIG },
 		bodySchema: createSessionRequestSchema,
 		schema: createSessionResponseSchema,
 	});

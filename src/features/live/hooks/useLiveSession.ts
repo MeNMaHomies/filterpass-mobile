@@ -4,6 +4,7 @@ import {
 	requestRecordingPermissionsAsync,
 	setAudioModeAsync,
 } from 'expo-audio';
+import { FIXED_SESSION_CONFIG } from '@/config/session';
 import { type FramesSocket, type OutputSocket, WsCloseError } from '@/api/ws';
 import { useBackendHealth } from '@/features/health';
 import { ensureSessionDefaults } from '@/features/settings/sessionDefaultsStore';
@@ -119,7 +120,7 @@ export function useLiveSession(): LiveSessionState {
 
 	const callCapture = useCallCapture({ onPcm: sendPcm });
 	const micCapture = useMicCapture({
-		sampleRate: defaults.sample_rate,
+		sampleRate: FIXED_SESSION_CONFIG.sample_rate,
 		onPcm: sendPcm,
 	});
 
@@ -256,8 +257,6 @@ export function useLiveSession(): LiveSessionState {
 			});
 
 			const created = await createLiveSessionMutation({
-				sample_rate: sessionDefaults.sample_rate,
-				chunk_duration_s: sessionDefaults.chunk_duration_s,
 				ema_alpha: sessionDefaults.ema_alpha,
 				spoof_threshold: sessionDefaults.spoof_threshold,
 				vad_mode: sessionDefaults.vad_mode,
@@ -346,9 +345,9 @@ export function useLiveSession(): LiveSessionState {
 
 			activeCaptureRef.current = mode;
 			if (mode === 'call') {
-				await callCapture.start(sessionDefaults.sample_rate);
+				await callCapture.start(FIXED_SESSION_CONFIG.sample_rate);
 			} else {
-				await micCapture.start(sessionDefaults.sample_rate);
+				await micCapture.start(FIXED_SESSION_CONFIG.sample_rate);
 			}
 			setStartedAt(Date.now());
 		} catch (e) {

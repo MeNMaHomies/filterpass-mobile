@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState, ScrollView, View, Text, StyleSheet } from 'react-native';
 import { Phone } from 'lucide-react-native';
 import { Button, Card, ErrorBanner, Eyebrow, StatusBadge } from '@/components';
+import { FIXED_SESSION_CONFIG } from '@/config/session';
 import { MicButton } from '../components/MicButton';
 import { CaptureModeToggle } from '../components/CaptureModeToggle';
 import { useScrollScreenProps } from '@/hooks/useScrollScreenProps';
@@ -164,12 +165,12 @@ export function LiveIdleView({
 					{[
 						[
 							'Sample rate',
-							defaults ? `${defaults.sample_rate / 1000} kHz` : '16 kHz',
+							`${FIXED_SESSION_CONFIG.sample_rate / 1000} kHz`,
 							'Audio capture rate',
 						],
 						[
 							'Chunk',
-							defaults ? `${defaults.chunk_duration_s} s` : '0.5 s',
+							`${FIXED_SESSION_CONFIG.chunk_duration_s} s`,
 							'Audio length per score',
 						],
 						[

@@ -11,8 +11,6 @@ import {
  */
 export const sessionDefaultsSchema = z
 	.object({
-		sample_rate: z.number().int().positive(),
-		chunk_duration_s: z.number().positive(),
 		ema_alpha: z.number().min(0.1).max(0.9),
 		spoof_threshold: z
 			.number()
@@ -38,8 +36,6 @@ export const sessionDefaultsSchema = z
 			spoof_threshold: spoof,
 		});
 		return {
-			sample_rate: d.sample_rate,
-			chunk_duration_s: d.chunk_duration_s,
 			ema_alpha: d.ema_alpha,
 			real_threshold: clamped.real_threshold,
 			spoof_threshold: clamped.spoof_threshold,
