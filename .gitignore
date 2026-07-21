@@ -17,6 +17,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+modules/filterpass-call-capture/android/.gradle/
 
 # Metro
 .metro-health-check*

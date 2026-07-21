@@ -83,6 +83,8 @@ describe('createSessionRequestSchema', () => {
 	it('accepts valid optional fields', () => {
 		const result = createSessionRequestSchema.safeParse({
 			sample_rate: 16000,
+			chunk_duration_s: 4,
+			chunk_overlap_s: 3,
 			spoof_threshold: 0.6,
 		});
 		expect(result.success).toBe(true);

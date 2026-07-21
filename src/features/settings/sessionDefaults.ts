@@ -7,12 +7,11 @@ const STORAGE_KEY = '@filterpass/session_defaults';
 export type VadFrameMs = 10 | 20 | 30;
 
 /**
- * Device defaults for the next live session.
+ * Persisted device settings for the next live session.
+ * Fixed audio configuration lives in `@/config/session` and is never stored.
  * `real_threshold` is client-only (uncertain band); API still gets spoof_threshold.
  */
 export type SessionDefaults = {
-	sample_rate: number;
-	chunk_duration_s: number;
 	ema_alpha: number;
 	real_threshold: number;
 	spoof_threshold: number;
@@ -21,8 +20,6 @@ export type SessionDefaults = {
 };
 
 export const API_SESSION_DEFAULTS: SessionDefaults = {
-	sample_rate: 16000,
-	chunk_duration_s: 0.5,
 	ema_alpha: 0.3,
 	real_threshold: 0.4,
 	spoof_threshold: 0.6,
@@ -33,13 +30,28 @@ export const API_SESSION_DEFAULTS: SessionDefaults = {
 export const VAD_MODE_OPTIONS = [0, 1, 2, 3] as const;
 export const VAD_FRAME_MS_OPTIONS = [10, 20, 30] as const;
 
-function parseStoredDefaults(raw: string): SessionDefaults {
+function parseStoredDefaults(raw: string): {
+	defaults: SessionDefaults;
+	shouldRemoveAudioConfig: boolean;
+} {
 	try {
 		const json: unknown = JSON.parse(raw);
 		const result = sessionDefaultsSchema.safeParse(json);
-		return result.success ? result.data : { ...API_SESSION_DEFAULTS };
+		const shouldRemoveAudioConfig =
+			typeof json === 'object' &&
+			json !== null &&
+			('sample_rate' in json ||
+				'chunk_duration_s' in json ||
+				'chunk_overlap_s' in json);
+		return {
+			defaults: result.success ? result.data : { ...API_SESSION_DEFAULTS },
+			shouldRemoveAudioConfig,
+		};
 	} catch {
-		return { ...API_SESSION_DEFAULTS };
+		return {
+			defaults: { ...API_SESSION_DEFAULTS },
+			shouldRemoveAudioConfig: false,
+		};
 	}
 }
 
@@ -47,7 +59,15 @@ export async function loadSessionDefaults(): Promise<SessionDefaults> {
 	try {
 		const raw = await AsyncStorage.getItem(STORAGE_KEY);
 		if (!raw) return { ...API_SESSION_DEFAULTS };
-		return parseStoredDefaults(raw);
+		const { defaults, shouldRemoveAudioConfig } = parseStoredDefaults(raw);
+		if (shouldRemoveAudioConfig) {
+			try {
+				await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+			} catch {
+				// The fixed config is still ignored even if legacy cleanup fails.
+			}
+		}
+		return defaults;
 	} catch {
 		return { ...API_SESSION_DEFAULTS };
 	}
